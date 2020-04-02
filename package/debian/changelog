@@ -1,3 +1,9 @@
+hidra (4.1.7-2+deb9u5~fsec) stretch; urgency=low
+
+  * Fix paths after restructuring
+
+ -- M. Kuhn <manuela.kuhn@desy.de>  Thu, 02 Apr 2020 14:10:01 +0100
+
 hidra (4.1.7-1+deb9u5~fsec) stretch; urgency=low
 
   * Bump version

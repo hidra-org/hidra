@@ -1,4 +1,4 @@
-opt/hidra/src/hidra_control/hidra_control_server.py
+opt/hidra/src/hidra_control/server.py
 opt/hidra/src/receiver/*
 opt/hidra/src/sender/*
 opt/hidra/conf/base_sender.yaml

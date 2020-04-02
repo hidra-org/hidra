@@ -73,9 +73,9 @@ check_arguments()
 get_hidra_version()
 {
     if [ "${HIDRA_LOCATION}" != "" ]; then
-        HIDRA_VERSION=$(cat "${HIDRA_LOCATION}/src/APIs/hidra/utils/_version.py")
+        HIDRA_VERSION=$(cat "${HIDRA_LOCATION}/src/api/python/hidra/utils/_version.py")
     else
-        URL="https://raw.githubusercontent.com/hidra-org/hidra/$TAG/src/APIs/hidra/utils/_version.py"
+        URL="https://raw.githubusercontent.com/hidra-org/hidra/$TAG/src/api/python/hidra/utils/_version.py"
         HIDRA_VERSION=$(curl -L $URL)
     fi
     # cut of the first characters
@@ -87,6 +87,10 @@ download_hidra()
 {
     if [ "$HIDRA_LOCATION" != "" ]; then
         cp -r "$HIDRA_LOCATION" "$MAPPED_DIR/hidra"
+        # local directory can contain unnecessary data or files
+        rm -r "$MAPPED_DIR"/hidra/data/*
+        rm -r "$MAPPED_DIR"/hidra/virtualenvs/*
+        rm -r "$MAPPED_DIR"/hidra/venv/*
         return
     fi
 
@@ -104,7 +108,7 @@ build_docker_image()
     DOCKER_DIR=$(pwd)
     DOCKER_IMAGE="debian_${DEBIAN_NAME}_build"
     DOCKER_CONTAINER="hidra_build_${DEBIAN_NAME}"
-    DOCKERFILE="${MAPPED_DIR}/hidra/docker/build/Dockerfile.build_debian${DEBIAN_VERSION}"
+    DOCKERFILE="${MAPPED_DIR}/hidra/scripts/package_building/Dockerfile.build_debian${DEBIAN_VERSION}"
 
     cd "${DOCKER_DIR}" || exit 1
     if [[ "$(docker images -q ${DOCKER_IMAGE} 2> /dev/null)" == "" ]]; then
@@ -155,60 +159,70 @@ usage()
     printf " --hidra-location <path>\n" >& 2
 }
 
-version=
-TAG=
-HIDRA_LOCATION=
-while test $# -gt 0
-do
-    #convert to lower case
-    input_value=$(echo "$1" | tr '[:upper:]' '[:lower:]')
+get_arguments()
+{
+    version=
+    TAG=
+    HIDRA_LOCATION=
+    while test $# -gt 0
+    do
+        #convert to lower case
+        input_value=$(echo "$1" | tr '[:upper:]' '[:lower:]')
 
-    case $input_value in
-        --version)
-            #convert to lower case
-            version=$(echo "$2" | tr '[:upper:]' '[:lower:]')
-            shift
-            ;;
-        --tag)
-            TAG="$2"
-            shift
-            ;;
-        --hidra-location)
-            HIDRA_LOCATION="$2"
-            shift
-            ;;
-        -h | --help ) usage
-            exit
-            ;;
-        * ) break;  # end of options
-    esac
-    shift
-done
+        case $input_value in
+            --version)
+                #convert to lower case
+                version=$(echo "$2" | tr '[:upper:]' '[:lower:]')
+                shift
+                ;;
+            --tag)
+                TAG="$2"
+                shift
+                ;;
+            --hidra-location)
+                HIDRA_LOCATION="$2"
+                shift
+                ;;
+            -h | --help ) usage
+                exit
+                ;;
+            * ) break;  # end of options
+        esac
+        shift
+    done
+}
 
-check_arguments
-get_hidra_version
+main()
+{
+    get_arguments "$@"
+    check_arguments
+    get_hidra_version
 
-MAPPED_DIR="/tmp/hidra_builds/debian${DEBIAN_VERSION}/${HIDRA_VERSION}"
+    MAPPED_DIR="/tmp/hidra_builds/debian${DEBIAN_VERSION}/${HIDRA_VERSION}"
 
-echo "Create packages for hidra tag $TAG for version $HIDRA_VERSION"
+    echo "Create packages for hidra tag $TAG for version $HIDRA_VERSION"
 
-if [ ! -d "$MAPPED_DIR" ]; then
-    mkdir -p "$MAPPED_DIR"
-fi
+    if [ ! -d "$MAPPED_DIR" ]; then
+        mkdir -p "$MAPPED_DIR"
+    fi
 
-cd "${MAPPED_DIR}" || exit 1
-download_hidra
+    cd "${MAPPED_DIR}" || exit 1
+    download_hidra
 
-mv hidra/debian .
-fix_debian_version
-tar czf "hidra_${HIDRA_VERSION}.orig.tar.gz" hidra
-mv debian hidra/debian
+    mv hidra/package/debian .
+    fix_debian_version
+    tar czf "hidra_${HIDRA_VERSION}.orig.tar.gz" hidra
+    # required for the debian pacakge building to work
+    mv debian hidra/debian
 
-build_docker_image
-build_package
+    build_docker_image
+    build_package
 
-# clean up
-#docker rmi "${DOCKER_IMAGE}"
-rm -rf "$MAPPED_DIR/hidra"
+    # clean up
+    #docker rmi "${DOCKER_IMAGE}"
+    rm -rf "$MAPPED_DIR/hidra"
 
-echo "Debian ${DEBIAN_VERSION} packages can be found in ${MAPPED_DIR}"
+    echo "Debian ${DEBIAN_VERSION} packages can be found in ${MAPPED_DIR}"
+}
+
+main "$@"

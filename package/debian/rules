@@ -16,17 +16,17 @@ override_dh_auto_install:
 	mkdir -p debian/tmp/lib/systemd/system
 	mkdir -p debian/tmp/var/log/hidra
 	chmod 1777 debian/tmp/var/log/hidra
-	cp src/APIs/hidra/*.py  debian/tmp/$(PYDIR)/hidra
-	cp -r src/APIs/hidra/utils  debian/tmp/$(PYDIR)/hidra
-	cp -r src/receiver debian/tmp/opt/hidra/src
-	cp -r src/sender debian/tmp/opt/hidra/src
-	cp -r src/hidra_control debian/tmp/opt/hidra/src
+	cp src/api/python/hidra/*.py  debian/tmp/$(PYDIR)/hidra
+	cp -r src/api/python/hidra/utils  debian/tmp/$(PYDIR)/hidra
+	cp -r src/hidra/receiver debian/tmp/opt/hidra/src
+	cp -r src/hidra/sender debian/tmp/opt/hidra/src
+	cp -r src/hidra/hidra_control debian/tmp/opt/hidra/src
 	cp -r conf/base_sender.yaml debian/tmp/opt/hidra/conf
 	cp -r conf/datamanager.yaml debian/tmp/opt/hidra/conf
 	cp -r conf/base_receiver.yaml debian/tmp/opt/hidra/conf
 	cp -r conf/datareceiver.yaml debian/tmp/opt/hidra/conf
 	cp -r conf/control_server.yaml debian/tmp/opt/hidra/conf
 	cp -r conf/control_client.yaml debian/tmp/opt/hidra/conf
-	cp initscripts/*.service debian/tmp/lib/systemd/system
+	cp scripts/init_scripts/*.service debian/tmp/lib/systemd/system
 %:
 	dh $@ --with python2
