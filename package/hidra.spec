@@ -64,15 +64,15 @@ This package contains only the client to interact with the control server in the
 %install
 # Packaging Python API
 mkdir -p %{buildroot}/%{python_sitelib}/%{name}
-cp -r src/APIs/hidra/* %{buildroot}/%{python_sitelib}/%{name}/
+cp -r src/api/python/hidra/* %{buildroot}/%{python_sitelib}/%{name}/
 
 # src receiver/sender
 mkdir -p %{buildroot}/opt/%{name}/src
-cp -ra src/receiver %{buildroot}/opt/%{name}/src/
-cp -ra src/sender %{buildroot}/opt/%{name}/src/
+cp -ra src/hidra/receiver %{buildroot}/opt/%{name}/src/
+cp -ra src/hidra/sender %{buildroot}/opt/%{name}/src/
 
 mkdir -p %{buildroot}/opt/%{name}/src/hidra_control
-cp -a src/hidra_control/*.py %{buildroot}/opt/%{name}/src/hidra_control/
+cp -a src/hidra/hidra_control/*.py %{buildroot}/opt/%{name}/src/hidra_control/
 
 # conf
 mkdir -p %{buildroot}/opt/%{name}/conf
@@ -80,7 +80,7 @@ cp conf/datamanager.yaml conf/datareceiver.yaml conf/base_receiver.yaml conf/bas
 
 # systemd unit files
 mkdir -p %{buildroot}/%{_unitdir}
-cp initscripts/*.service %{buildroot}/%{_unitdir}/
+cp scripts/init_scripts/*.service %{buildroot}/%{_unitdir}/
 
 # log directory
 mkdir -p %{buildroot}/var/log/%{name}
@@ -100,9 +100,9 @@ mkdir -p %{buildroot}/var/log/%{name}
 %attr(0755,root,root) /opt/%{name}/src/receiver/*
 /opt/%{name}/src/sender/*
 %attr(0755,root,root) /opt/%{name}/src/sender/datamanager.py
-/opt/%{name}/src/hidra_control/hidra_control_server.py
-/opt/%{name}/src/hidra_control/hidra_control_server.pyc
-/opt/%{name}/src/hidra_control/hidra_control_server.pyo
+/opt/%{name}/src/hidra_control/server.py
+/opt/%{name}/src/hidra_control/server.pyc
+/opt/%{name}/src/hidra_control/server.pyo
 %{_unitdir}/*.service
 %config(noreplace) /opt/%{name}/conf/*
 %attr(1777,root,root) /var/log/%{name}
@@ -112,12 +112,14 @@ mkdir -p %{buildroot}/var/log/%{name}
 %{python_sitelib}/*
 
 %files -n hidra-control-client
-/opt/%{name}/src/hidra_control/hidra_control_client.py
-/opt/%{name}/src/hidra_control/hidra_control_client.pyc
-/opt/%{name}/src/hidra_control/hidra_control_client.pyo
+/opt/%{name}/src/hidra_control/client.py
+/opt/%{name}/src/hidra_control/client.pyc
+/opt/%{name}/src/hidra_control/client.pyo
 %config(noreplace) /opt/%{name}/conf/control_client.yaml
 
 %changelog
+* Wed Apr 01 2020 Manuela Kuhn <manuela.kuhn@desy.de> - 4.1.7-2
+- Fix paths after restructuring
 * Thu Feb 13 2020 Manuela Kuhn <manuela.kuhn@desy.de> - 4.1.7-1
 - Bump version
 * Wed Dec 11 2019 Manuela Kuhn <manuela.kuhn@desy.de> - 4.1.6-1

@@ -2,8 +2,9 @@
 
 get_hidra_version()
 {
-    URL="https://raw.githubusercontent.com/hidra-org/hidra/master/src/APIs/hidra/utils/_version.py"
+    URL="https://raw.githubusercontent.com/hidra-org/hidra/master/src/api/python/hidra/utils/_version.py"
     HIDRA_VERSION=$(curl -L $URL)
+
     # cut of the first characters
     HIDRA_VERSION=${HIDRA_VERSION:15}
     HIDRA_VERSION=${HIDRA_VERSION%?}
@@ -38,7 +39,7 @@ build_docker_image()
     DOCKER_DIR=$(pwd)
     DOCKER_IMAGE=centos${CENTOS_VERSION}_build
     DOCKER_CONTAINER=hidra_build_centos${CENTOS_VERSION}
-    DOCKER_FILE="${MAPPED_DIR}/hidra/docker/build/Dockerfile.build_centos${CENTOS_VERSION}"
+    DOCKER_FILE="${MAPPED_DIR}/hidra/scripts/package_building/Dockerfile.build_centos${CENTOS_VERSION}"
 
     cd "${DOCKER_DIR}" || exit 1
     if [[ "$(docker images -q "${DOCKER_IMAGE}" 2> /dev/null)" == "" ]]; then
