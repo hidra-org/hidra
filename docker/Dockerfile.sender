@@ -11,10 +11,13 @@ RUN pip install \
     logutils \
     pyyaml \
     inotifyx \
-    pathlib2
+    pathlib2 \
+    numpy \
+    ldap3
 # RUN cd /opt && \
 #     git clone https://github.com/hidra-org/hidra.git && \
 #     cd hidra && \
 #     git checkout develop && \
 #     mkdir /var/log/hidra
-ENTRYPOINT ["python", "/opt/hidra/src/sender/datamanager.py", "--verbose", "--config_file", "/opt/hidra/conf/datamanager_docker.yaml", "--onscreen", "debug"]
+#ENTRYPOINT ["python", "/opt/hidra/src/hidra/sender/datamanager.py", "--verbose", "--config_file", "/opt/hidra/conf/datamanager_docker.yaml", "--onscreen", "debug"]
+ENTRYPOINT bash /opt/hidra/docker/set_env_and_run.sh python /opt/hidra/src/hidra/sender/datamanager.py --verbose --config_file /opt/hidra/conf/datamanager_docker.yaml --onscreen debug
