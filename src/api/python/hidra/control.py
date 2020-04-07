@@ -44,7 +44,9 @@ from .utils import (
     WrongConfiguration,
     Base,
     check_netgroup,
-    LoggingFunction
+    LoggingFunction,
+    is_ipv6_address,
+    get_socket_id
 )
 
 
@@ -462,11 +464,18 @@ class ReceiverControl(Base):
 
         self.context = zmq.Context()
 
+        # to be ipv4 and ipv6 compatible
+        is_ipv6 = is_ipv6_address(log=self.log, ip=host)
+        socket_id = get_socket_id(
+                log=self.log, ip=host, port=port, is_ipv6=is_ipv6
+            )
+
         self.status_socket = self._start_socket(
             name="status_socket",
             sock_type=zmq.REQ,
             sock_con="connect",
-            endpoint="tcp://{}:{}".format(host, port)
+            endpoint="tcp://{}".format(socket_id),
+            is_ipv6=is_ipv6
         )
 
         self.timeout = 2000

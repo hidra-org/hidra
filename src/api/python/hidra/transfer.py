@@ -1082,6 +1082,7 @@ class Transfer(Base):
                 sock_type=zmq.PUB,
                 sock_con="bind",
                 endpoint=endpoint,
+                is_ipv6=self.is_ipv6,
             )
             # ---------------------------------- #
         else:
