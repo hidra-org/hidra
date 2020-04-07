@@ -59,9 +59,6 @@ except ImportError:
 
 import setproctitle
 
-import hidra.utils as utils  # noqa E402
-from hidra import __version__  # noqa E402
-
 # to make windows freeze work (cx_Freeze 5.x)
 try:
     CURRENT_DIR = os.path.dirname(os.path.realpath(__file__))
@@ -70,6 +67,10 @@ except NameError:
 
 if CURRENT_DIR not in sys.path:
     sys.path.insert(0, CURRENT_DIR)
+
+# pylint: disable=wrong-import-position
+import hidra.utils as utils  # noqa E402
+from hidra import __version__  # noqa E402
 
 # pylint: disable=wrong-import-position
 from base_class import Base  # noqa E402

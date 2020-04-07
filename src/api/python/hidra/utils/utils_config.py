@@ -45,7 +45,8 @@ from .utils_datatypes import (
     NotFoundError
 )
 from .utils_general import is_windows
-from ._environment import BASE_DIR  # noqa E402
+# for freeze us the general one not the one from this dir
+from _environment import BASE_DIR  # noqa E402
 
 try:
     # python3
