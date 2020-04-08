@@ -34,7 +34,7 @@ import time
 
 from inotify_simple import INotify, flags
 
-from .performance_base import PerformanceBase, do_tests
+from performance_base import PerformanceBase, do_tests
 
 
 class CreateAndGet(PerformanceBase):

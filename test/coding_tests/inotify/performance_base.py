@@ -31,7 +31,7 @@ import multiprocessing
 import os
 import threading
 
-from .external_trigger import create_test_files
+from external_trigger import create_test_files
 
 
 class PerformanceBase(object):
