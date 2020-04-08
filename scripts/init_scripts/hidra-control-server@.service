@@ -1,0 +1,13 @@
+[Unit]
+Description=HiDRA Control Server for %i
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+TimeoutStartSec=0
+WorkingDirectory=/opt/hidra
+User=hidra
+ExecStart=/opt/hidra/src/hidra/hidra_control/server.py --beamline %i --verbose
+
+[Install]
+WantedBy=multi-user.target

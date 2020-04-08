@@ -10,10 +10,13 @@ RUN pip install \
     future \
     logutils \
     pyyaml \
-    pathlib2
+    pathlib2 \
+    numpy \
+    ldap3
 # RUN cd /opt && \
 #     git clone https://github.com/hidra-org/hidra.git && \
 #     cd hidra && \
 #     git checkout develop && \
 #     mkdir /var/log/hidra
-ENTRYPOINT ["python", "/opt/hidra/src/receiver/datareceiver.py", "--verbose", "--onscreen", "debug", "--config_file", "/opt/hidra/conf/datareceiver_docker.yaml"]
+#ENTRYPOINT ["python", "/opt/hidra/src/hidra/receiver/datareceiver.py", "--verbose", "--onscreen", "debug", "--config_file", "/opt/hidra/conf/datareceiver_docker.yaml"]
+ENTRYPOINT bash /opt/hidra/docker/set_env_and_run.sh python /opt/hidra/src/hidra/receiver/datareceiver.py --verbose --config_file /opt/hidra/conf/datareceiver_docker.yaml --onscreen debug

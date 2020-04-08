@@ -4,7 +4,7 @@ RUN apt update && apt install -y \
     git \
     python \
     python-pip
-RUN pip install pyzmq pathlib2 pyyaml logutils
+RUN pip install future pyzmq pathlib2 pyyaml logutils numpy ldap3
 RUN cd /opt && git clone https://github.com/hidra-org/hidra.git
 # RUN cd /opt/hidra && git checkout develop
-RUN cp -r /opt/hidra/src/APIs/hidra /usr/local/lib/python2.7/dist-packages/
+RUN cp -r /opt/hidra/src/api/python/hidra /usr/local/lib/python2.7/dist-packages/

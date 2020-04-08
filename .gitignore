@@ -1,6 +1,7 @@
 *.swp
 *.o
 *.x
+virtualenvs/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -129,3 +130,10 @@ dmypy.json
 
 # PyCharm
 .idea/
+
+# Sublime text
+*.sublime-project
+*.sublime-workspace
+
+# Virtual studio code
+.vscode/

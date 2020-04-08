@@ -42,8 +42,8 @@ import zmq
 from cx_Freeze import setup, Executable
 
 BASEPATH = os.path.dirname(os.path.abspath(__file__))
-SENDERPATH = os.path.join(BASEPATH, "src", "sender")
-APIPATH = os.path.join(BASEPATH, "src", "APIs", "hidra")
+SENDERPATH = os.path.join(BASEPATH, "src", "hidra", "sender")
+APIPATH = os.path.join(BASEPATH, "src", "api", "python", "hidra")
 UTILSPATH = os.path.join(APIPATH, "utils")
 CONFPATH = os.path.join(BASEPATH, "conf")
 PYTHON_PATH = os.path.dirname(get_python_lib())
@@ -97,8 +97,9 @@ def get_init():
     """Reuse the init file for installed HiDRA to reduce amount of maintenance
     """
 
-    initscript = os.path.join(BASEPATH, "initscripts", "hidra.sh")
-    exescript = os.path.join(BASEPATH, "initscripts", "hidra_exe.sh")
+    script_dir = os.path.join(BASEPATH, "scripts", "init_scripts")
+    initscript = os.path.join(script_dir, "hidra.sh")
+    exescript = os.path.join(script_dir, "hidra_exe.sh")
     with open(initscript, "r") as f:
         with open(exescript, "w") as f_exe:
             for line in f:
@@ -123,12 +124,10 @@ def get_environment():
     with open(env, "r") as f:
         with open(exe_env, "w") as f_exe:
             for line in f:
-                ref_line = (
-                    "BASE_DIR = os.path.dirname(os.path.dirname(CURRENT_DIR))"
-                    "\n"
-                )
-                if line == ref_line:
+                if line.startswith("BASE_DIR = os.path.dirname"):
                     f_exe.write("BASE_DIR = CURRENT_DIR\n")
+                elif line.startswith("API_DIR = os.path.join"):
+                    f_exe.write("API_DIR = BASE_DIR\n")
                 else:
                     f_exe.write(line)
 
@@ -161,6 +160,9 @@ BUILD_EXE_OPTIONS = {
             # ImportError: No module named auth.thread
             "zmq",
             "yaml",
+            "future",  # building with python 3.5 does not include this
+            "numpy",
+            "ldap3"
         ]
         + VERSION_SPECIFIC_PACKAGES
         + PLATFORM_SPECIFIC_PACKAGES

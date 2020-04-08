@@ -4,9 +4,11 @@
 # setup.
 
 OVERWRITE_IMAGE=false
-CURRENTFILE="$(readlink --canonicalize-existing -- "$0")"
-CURRENTDIR="${CURRENTFILE%/*}"
-SCRIPTNAME="${CURRENTFILE##*/}"
+SELF_ZERO="$0"
+test -n "${BASH_VERSION}" && SELF_ZERO="${BASH_SOURCE[0]}" # Fix when bash is used
+SELF_PATH="$(readlink --canonicalize-existing -- "${SELF_ZERO}")"
+CURRENTDIR="${SELF_PATH%/*}"
+SCRIPTNAME="${SELF_PATH##*/}"
 BASEDIR="${CURRENTDIR%/*}"
 
 usage()
