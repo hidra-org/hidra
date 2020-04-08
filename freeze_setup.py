@@ -160,6 +160,7 @@ BUILD_EXE_OPTIONS = {
             # ImportError: No module named auth.thread
             "zmq",
             "yaml",
+            "future",  # building with python 3.5 does not include this
             "numpy",
             "ldap3"
         ]
