@@ -451,8 +451,8 @@ class DataDispatcher(Base):
         signal.signal(signal.SIGTERM, self.signal_term_handler)
         signal.signal(signal.SIGINT, self.signal_term_handler)
 
-        self.log.debug("DataDispatcher-%s started (PID %s).",
-                       self.dispatcher_id, os.getpid())
+        self.log.info("DataDispatcher-%s started (PID %s).",
+                      self.dispatcher_id, os.getpid())
 
         super().print_config(self.config)
 
