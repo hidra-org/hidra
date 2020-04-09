@@ -136,7 +136,7 @@ run_hidra_docker()
     UIDGID="$(id -u "$USER"):$(id -g "$USER")"
 
     getent passwd "$USER" > "$PASSWD_FILE"
-    echo "$(id -gn):*:$(id -g):$USER" > $GROUP_FILE
+    echo "$(id -gn):*:$(id -g):$USER" > "$GROUP_FILE"
 
     docker run -it \
         --rm \

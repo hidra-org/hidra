@@ -1,4 +1,8 @@
 # develop
+# 4.1.8
+
+- Fix memory leak in signalhandler for python2
+
 # 4.1.7
 
 - Cache DNS lookup to reduce DNS lookups and fix delay problems
