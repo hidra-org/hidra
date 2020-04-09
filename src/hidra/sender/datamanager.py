@@ -42,7 +42,6 @@ import logging
 from multiprocessing import Process, freeze_support, Queue
 import os
 import tempfile
-import threading
 import time
 import signal
 import socket
@@ -74,13 +73,9 @@ from hidra import __version__  # noqa E402
 
 # pylint: disable=wrong-import-position
 from base_class import Base  # noqa E402
-# pylint: disable=wrong-import-position
 from signalhandler import SignalHandler  # noqa E402
-# pylint: disable=wrong-import-position
 from taskprovider import TaskProvider  # noqa E402
-# pylint: disable=wrong-import-position
 from datadispatcher import DataDispatcher  # noqa E402
-# pylint: disable=wrong-import-position
 from statserver import StatServer  # noqa E402
 
 from _environment import BASE_DIR  # noqa E402 # pylint: disable=unused-import
@@ -514,7 +509,7 @@ class DataManager(Base):
 
         self.local_target = None
 
-        self.signalhandler_thr = None
+        self.signalhandler_pr = None
         self.taskprovider_pr = None
         self.datadispatcher_pr = []
 
@@ -794,7 +789,7 @@ class DataManager(Base):
             self.statserver.start()
 
         # SignalHandler
-        self.signalhandler_thr = threading.Thread(
+        self.signalhandler_pr = Process(
             target=SignalHandler,
             kwargs={
                 "config": self.config,
@@ -804,13 +799,13 @@ class DataManager(Base):
                 "log_queue": self.log_queue
             }
         )
-        self.signalhandler_thr.start()
+        self.signalhandler_pr.start()
 
         # needed, because otherwise the requests for the first files are not
         # forwarded properly
         time.sleep(0.5)
 
-        if not self.signalhandler_thr.is_alive():
+        if not self.signalhandler_pr.is_alive():
             self.log.error("Signalhandler did not start.")
             return
 
@@ -894,7 +889,7 @@ class DataManager(Base):
         if not self.continue_run:
             self.log.debug("Stopped run loop.")
         else:
-            if not self.signalhandler_thr.is_alive():
+            if not self.signalhandler_pr.is_alive():
                 self.log.info("SignalHandler terminated.")
             if not self.taskprovider_pr.is_alive():
                 self.log.info("TaskProvider terminated.")
@@ -913,7 +908,7 @@ class DataManager(Base):
 
         if self.use_cleaner:
             status = (
-                self.signalhandler_thr.is_alive()
+                self.signalhandler_pr.is_alive()
                 and self.taskprovider_pr.is_alive()
                 and self.cleaner_pr.is_alive()
                 and all(datadispatcher.is_alive()
@@ -922,7 +917,7 @@ class DataManager(Base):
             )
         else:
             status = (
-                self.signalhandler_thr.is_alive()
+                self.signalhandler_pr.is_alive()
                 and self.taskprovider_pr.is_alive()
                 and all(datadispatcher.is_alive()
                         for datadispatcher
@@ -944,11 +939,11 @@ class DataManager(Base):
         is_hanging = False
 
         # detecting hanging processes
-        if (self.signalhandler_thr is not None
-                and self.signalhandler_thr.is_alive()):
+        if (self.signalhandler_pr is not None
+                and self.signalhandler_pr.is_alive()):
             if log:
-                self.log.error("SignalHandler hangs (PID %s, same as "
-                               "DataManager).", self.current_pid)
+                self.log.error("SignalHandler hangs (PID %s).",
+                               self.signalhandler_pr.pid)
             is_hanging = True
 
         if (self.taskprovider_pr is not None

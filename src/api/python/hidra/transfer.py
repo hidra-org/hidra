@@ -401,7 +401,7 @@ class Transfer(Base):
         else:
             self.log = LoggingFunction("debug")
 
-    def _setup_control_server_connection(self):
+    def _setup_control_server_connection(self):  # pylint: disable=invalid-name
 
         if self.control is not None:
             # nothing to do

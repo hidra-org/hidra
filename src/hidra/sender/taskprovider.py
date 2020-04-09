@@ -85,8 +85,8 @@ class TaskProvider(Base):
         """
 
         self.log = utils.get_logger(self.__class__.__name__, self.log_queue)
-        self.log.debug("%s started (PID %s).",
-                       self.__class__.__name__, os.getpid())
+        self.log.info("%s started (PID %s).",
+                      self.__class__.__name__, os.getpid())
 
         signal.signal(signal.SIGTERM, self.signal_term_handler)
 

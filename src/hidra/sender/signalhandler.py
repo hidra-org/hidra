@@ -141,7 +141,7 @@ class SignalHandler(Base):
 
         # Send all logs to the main process
         self.log = utils.get_logger("SignalHandler", log_queue)
-        self.log.debug("SignalHandler started (PID %s).", os.getpid())
+        self.log.info("SignalHandler started (PID %s).", os.getpid())
 
         self.whitelist = utils.extend_whitelist(whitelist, ldapuri, self.log)
 
