@@ -42,8 +42,13 @@ fix_changelog_entries()
     fi
 }
 
-bumpversion "${RELEASE}" ${DRYRUN} --config-file .bumpversion_prework.cfg || return 1
-bumpversion "${RELEASE}" ${DRYRUN} --allow-dirty || return 1
+SELF_ZERO="$0"
+test -n "${BASH_VERSION}" && SELF_ZERO="${BASH_SOURCE[0]}" # Fix when bash is used
+SELF_PATH="$(readlink --canonicalize-existing -- "${SELF_ZERO}")"
+SELF_DIR="${SELF_PATH%/*}"
+
+bumpversion ${RELEASE} ${DRYRUN} --config-file $SELF_DIR/.bumpversion_prework.cfg || return 1
+bumpversion ${RELEASE} ${DRYRUN} --config-file $SELF_DIR/.bumpversion.cfg --allow-dirty || return 1
 
 fix_timezone
 fix_changelog_entries
