@@ -146,7 +146,7 @@ class EventDetector(EventDetectorBase):
                                 "use_cleanup"]
 
         # to keep backwards compatibility to old config files
-        if not self.config_all["general"]["config_file"].endswith("conf"):
+        if not self.config_all["general"]["config_file"].suffix == ".conf":
             self.required_params.append("event_timeout")
 
         if self.config["use_cleanup"]:
