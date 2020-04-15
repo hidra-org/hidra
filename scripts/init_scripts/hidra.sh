@@ -27,6 +27,7 @@ START_CHECK_DELAY=3
 USE_EXE=false
 SHOW_SCRIPT_SETTINGS=false
 DEBUG=false
+VERBOSE=true
 
 if [ "${USE_EXE}" == "false" ]
 then
@@ -49,7 +50,8 @@ RETVAL=0
 
 usage()
 {
-    #echo "$(basename "$0")"
+    # This are 80 characters after echo
+    #    "......... ......... ......... ......... ......... ......... ......... ......... "
     echo "Usage: $SCRIPTNAME COMMAND --beamline|--bl <beamline> [OPTIONS]"
     echo ""
     echo "Commands:"
@@ -66,7 +68,8 @@ usage()
     echo "Options:"
     echo "    --det, --detector       the detector which is used"
     echo "    --config_file <string>  use a different config file"
-    echo "    --debug                 enable verbose output for debugging purposes"
+    echo "    --debug                 enable verbose output on screen for debugging "
+    echo "                            purposes"
 }
 
 load_ld_library_path()
@@ -228,22 +231,28 @@ fi
 if [ "${USE_EXE}" == "false" ]
 then
     DAEMON=${BASEDIR}/src/hidra/sender/datamanager.py
-    DAEMON_ARGS="--verbose --config_file ${config_file}"
     LOG_DIRECTORY=/var/log/hidra
     getsettings=${BASEDIR}/src/api/python/hidra/utils/getsettings.py
     get_receiver_status=${BASEDIR}/src/api/python/hidra/utils/get_receiver_status.py
 else
     DAEMON=${BASEDIR}/datamanager
-    DAEMON_ARGS="--verbose --config_file ${config_file}"
     LOG_DIRECTORY=${BASEDIR}/logs
     getsettings=${BASEDIR}/getsettings
     get_receiver_status=${BASEDIR}/get_receiver_status
 fi
 
+DAEMON_ARGS="--config_file ${config_file}"
+
 if [ "${DEBUG}" == "true" ]
 then
     DAEMON_ARGS="${DAEMON_ARGS} --onscreen debug"
+    VERBOSE=true
     SHOW_SCRIPT_SETTINGS=true
+fi
+
+if ["${VERBOSE}" == "true" ]
+then
+    DAEMON_ARGS="${DAEMON_ARGS} --verbose"
 fi
 
 if [ "${SHOW_SCRIPT_SETTINGS}" == "true" ]
