@@ -44,8 +44,60 @@ try:
     # pylint: disable=invalid-name
     QueueListener = logging.handlers.QueueListener
     QueueHandler = logging.handlers.QueueHandler
+
+    class CustomQueueListener(QueueListener):
+        """Use the default QueueListener implementation in python3
+        """
+        def __init__(self, queue, *handlers):
+            super().__init__(queue, *handlers, respect_handler_level=True)
+
 except AttributeError:
     from logutils.queue import QueueListener, QueueHandler
+
+    class CustomQueueListener(QueueListener):
+        """
+        Overcome the limitation in the QueueListener implementation
+        concerning independent setting of log levels for two handler.
+        """
+
+        # pylint: disable=invalid-name
+
+        def __init__(self, queue, *handlers):
+            """Initialize an instance with the specified queue and handlers.
+            """
+
+            super().__init__(queue, *handlers)
+
+            # Changing this to a list from tuple in the parent class
+            self.handlers = list(handlers)
+
+        def handle(self, record):
+            """Override handle a record.
+
+            This just loops through the handlers offering them the record
+            to handle.
+
+            Args:
+                record: The record to handle.
+            """
+            record = self.prepare(record)
+            for handler in self.handlers:
+                # This check is not in the parent class
+                if record.levelno >= handler.level:
+                    handler.handle(record)
+
+        def addHandler(self, handler):  # noqa: N802
+            """Add the specified handler to this logger.
+            """
+            if handler not in self.handlers:
+                self.handlers.append(handler)
+
+        def removeHandler(self, handler):  # noqa: N802
+            """Remove the specified handler from this logger.
+            """
+            if handler in self.handlers:
+                handler.close()
+                self.handlers.remove(handler)
 
 
 def is_windows():
@@ -56,52 +108,6 @@ def is_windows():
     """
 
     return platform.system() == "Windows"
-
-
-class CustomQueueListener(QueueListener):
-    """
-    Overcome the limitation in the QueueListener implementation
-    concerning independent setting of log levels for two handler.
-    """
-
-    # pylint: disable=invalid-name
-
-    def __init__(self, queue, *handlers):
-        """Initialize an instance with the specified queue and handlers.
-        """
-
-        super().__init__(queue, *handlers)
-
-        # Changing this to a list from tuple in the parent class
-        self.handlers = list(handlers)
-
-    def handle(self, record):
-        """Override handle a record.
-
-        This just loops through the handlers offering them the record
-        to handle.
-
-        Args:
-            record: The record to handle.
-        """
-        record = self.prepare(record)
-        for handler in self.handlers:
-            # This check is not in the parent class
-            if record.levelno >= handler.level:
-                handler.handle(record)
-
-    def addHandler(self, handler):  # noqa: N802
-        """Add the specified handler to this logger.
-        """
-        if handler not in self.handlers:
-            self.handlers.append(handler)
-
-    def removeHandler(self, handler):  # noqa: N802
-        """Remove the specified handler from this logger.
-        """
-        if handler in self.handlers:
-            handler.close()
-            self.handlers.remove(handler)
 
 
 def convert_str_to_log_level(level):
