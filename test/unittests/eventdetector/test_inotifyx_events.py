@@ -36,7 +36,7 @@ import time
 import logging
 from shutil import copyfile
 
-from inotifyx_events import EventDetector
+from eventdetectors.inotifyx_events import EventDetector
 from .eventdetector_test_base import EventDetectorTestBase, create_dir
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
@@ -188,7 +188,8 @@ class TestEventDetector(EventDetectorTestBase):
 #                    time.sleep(0.5)
 
                 memory_usage_new = (
-                    resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
+                    resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+                )
                 self.log.info("Memory usage in iteration %s: %s (kb)",
                               step, memory_usage_new)
                 if memory_usage_new > memory_usage_old:

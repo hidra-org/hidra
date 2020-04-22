@@ -35,15 +35,9 @@ from builtins import super  # pylint: disable=redefined-builtin
 import time
 import zmq
 
-try:
-    import unittest.mock as mock
-except ImportError:
-    # for python2
-    import mock
-
-import experimental_events.sync_lambda_events as events
-from ..eventdetector_test_base import EventDetectorTestBase
+import eventdetectors.experimental_events.sync_lambda_events as events
 import hidra.utils as utils
+from ..eventdetector_test_base import EventDetectorTestBase
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
@@ -70,8 +64,8 @@ class TestEventDetector(EventDetectorTestBase):
             # time to wait between image requests (in s)
             "wait_time": 1,
             "internal_com_endpoint": endpoint,
-            #"device_names": ["haso228yy:10000/bltest/lambda/01"]
-            #"device_names": ["haso111k:10000/petra3/lambda/01"]
+            # "device_names": ["haso228yy:10000/bltest/lambda/01"]
+            # "device_names": ["haso111k:10000/petra3/lambda/01"]
             "device_names": ["haso228yy:10000/bltest/lambda/01",
                              "haso111k:10000/petra3/lambda/01"]
         }
@@ -91,6 +85,7 @@ class TestEventDetector(EventDetectorTestBase):
 
         self.eventdetector = events.EventDetector(self.ed_base_config)
 
+        # pylint: disable=attribute-defined-outside-init
         self.internal_com_socket = self.start_socket(
             name="internal_com_socket",
             sock_type=zmq.PULL,
@@ -100,7 +95,7 @@ class TestEventDetector(EventDetectorTestBase):
 
         try:
             # get synchronized events
-            for i in range(2):
+            for _ in range(2):
                 event_list = self.eventdetector.get_new_event()
                 for event in event_list:
                     recv_msg = self.internal_com_socket.recv_multipart()

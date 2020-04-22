@@ -32,7 +32,7 @@ from builtins import super  # pylint: disable=redefined-builtin
 
 import os
 
-from inotify_utils import get_event_message
+from eventdetectors.inotify_utils import get_event_message
 from .eventdetector_test_base import EventDetectorTestBase
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'

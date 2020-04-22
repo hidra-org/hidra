@@ -34,7 +34,7 @@ import json
 import os
 import subprocess
 
-from http_fetcher import DataFetcher
+from datafetchers.http_fetcher import DataFetcher
 from .datafetcher_test_base import DataFetcherTestBase
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'

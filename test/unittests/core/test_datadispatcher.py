@@ -116,6 +116,7 @@ class TestDataDispatcher(TestBase):
             fixed_stream_addr=None,
             config=config,
             log_queue=self.log_queue,
+            log_level="debug",
             context=self.context,
             stop_request=threading.Event()
         )
@@ -174,6 +175,7 @@ class TestDataDispatcher(TestBase):
             fixed_stream_addr=fixed_stream_addr,
             config=self.datadispatcher_config,
             log_queue=self.log_queue,
+            log_level="debug",
             context=self.context,
             stop_request=stop_request
         )

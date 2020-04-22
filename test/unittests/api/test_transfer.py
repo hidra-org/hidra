@@ -475,25 +475,29 @@ class TestTransfer(TestBase):
 
         targets = []
 
+        m_check_ctrl_exists = ("hidra.transfer.Transfer."
+                               "_check_control_server_exists")
         m_create_socket = "hidra.transfer.Transfer._create_signal_socket"
         m_set_targets = "hidra.transfer.Transfer._set_targets"
         m_send_signal = "hidra.transfer.Transfer._send_signal"
         with mock.patch(m_create_socket) as mock_create_socket:
             with mock.patch(m_set_targets) as mock_set_targets:
-                with mock.patch(m_send_signal) as mock_send_signal:
-                    mock_send_signal.return_value = [
-                        "START_{}".format(
-                            self.transfer_conf["connection_type"]
-                        ).encode("ascii")
-                    ]
+                with mock.patch(m_check_ctrl_exists) as mock_check_ctrl_exists:
+                    with mock.patch(m_send_signal) as mock_send_signal:
+                        mock_check_ctrl_exists.return_value = False
+                        mock_send_signal.return_value = [
+                            "START_{}".format(
+                                self.transfer_conf["connection_type"]
+                            ).encode("ascii")
+                        ]
 
-                    transfer.initiate(targets)
+                        transfer.initiate(targets)
 
-                    self.assertTrue(mock_create_socket.called)
-                    self.assertTrue(mock_set_targets.called)
-                    self.assertTrue(mock_send_signal.called)
+                        self.assertTrue(mock_create_socket.called)
+                        self.assertTrue(mock_set_targets.called)
+                        self.assertTrue(mock_send_signal.called)
 
-                    # if no exception was raised test succeeded
+                        # if no exception was raised test succeeded
 
         # --------------------------------------------------------------------
         # wrong response
@@ -502,18 +506,20 @@ class TestTransfer(TestBase):
 
         targets = []
 
-        m_create_socket = "hidra.transfer.Transfer._create_signal_socket"
-        m_set_targets = "hidra.transfer.Transfer._set_targets"
+        m_check_ctrl_exists = ("hidra.transfer.Transfer."
+                               "_check_control_server_exists")
         m_send_signal = "hidra.transfer.Transfer._send_signal"
-        with mock.patch(m_create_socket) as mock_create_socket:
-            with mock.patch(m_set_targets) as mock_set_targets:
-                with mock.patch(m_send_signal) as mock_send_signal:
-                    mock_send_signal.return_value = [
-                        b"something_wrong"
-                    ]
+        with mock.patch("hidra.transfer.Transfer._create_signal_socket"):
+            with mock.patch("hidra.transfer.Transfer._set_targets"):
+                with mock.patch(m_check_ctrl_exists) as mock_check_ctrl_exists:
+                    with mock.patch(m_send_signal) as mock_send_signal:
+                        mock_check_ctrl_exists.return_value = False
+                        mock_send_signal.return_value = [
+                            b"something_wrong"
+                        ]
 
-                    with self.assertRaises(m_transfer.CommunicationFailed):
-                        transfer.initiate(targets)
+                        with self.assertRaises(m_transfer.CommunicationFailed):
+                            transfer.initiate(targets)
 
     def test__create_signal_socket(self):
         # --------------------------------------------------------------------

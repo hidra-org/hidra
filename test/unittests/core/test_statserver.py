@@ -95,7 +95,7 @@ class TestStatServer(TestBase):
 
         self.server = multiprocessing.Process(
             target=StatServer,
-            args=(self.statserver_config, self.log_queue)
+            args=(self.statserver_config, self.log_queue, "debug")
         )
         self.server.start()
         time.sleep(0.1)

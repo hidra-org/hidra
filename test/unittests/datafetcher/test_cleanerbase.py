@@ -38,7 +38,7 @@ import time
 import shutil
 import zmq
 
-from cleanerbase import CleanerBase
+from datafetchers.cleanerbase import CleanerBase
 import hidra.utils as utils
 from .datafetcher_test_base import DataFetcherTestBase
 
@@ -95,6 +95,7 @@ class TestDataFetcher(DataFetcherTestBase):
         kwargs = dict(
             config=self.cleaner_config,
             log_queue=self.log_queue,
+            log_level="debug",
             endpoints=endpoints
         )
         cleaner_pr = Process(target=Cleaner, kwargs=kwargs)

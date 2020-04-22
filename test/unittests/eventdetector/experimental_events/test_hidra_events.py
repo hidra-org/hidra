@@ -12,7 +12,7 @@ import json
 import os
 import zmq
 
-from hidra_events import (
+from eventdetectors.hidra_events import (
     EventDetector,
     get_ipc_addresses,
     get_endpoints

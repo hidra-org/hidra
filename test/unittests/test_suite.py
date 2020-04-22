@@ -32,7 +32,6 @@ import difflib
 import unittest
 from importlib import import_module
 import pkgutil
-import re
 import sys
 
 import _environment  # noqa F401 # pylint: disable=unused-import
@@ -60,7 +59,8 @@ PACKAGES = {
         "exclude": [
             "test_hidra_events",
             "test_zmq_events",
-            "test_sync_ewmscp_events"
+            "test_sync_ewmscp_events",
+            "test_sync_lambda_events"
         ]
     },
     "datafetcher": {
@@ -71,7 +71,11 @@ PACKAGES = {
     "datafetcher.experimental_fetcher": {
         "default": "TestDataFetcher",
         "special": {},
-        "exclude": []
+        "exclude": [
+            "test_hidra_fetcher",
+            "test_zmq_fetcher",
+            "test_sync_lambda_fetcher"
+        ]
     },
     "core": {
         "default": None,

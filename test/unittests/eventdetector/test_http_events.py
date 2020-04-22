@@ -32,7 +32,7 @@ from builtins import super  # pylint: disable=redefined-builtin
 
 import socket
 
-from http_events import EventDetector
+from eventdetectors.http_events import EventDetector
 from .eventdetector_test_base import EventDetectorTestBase
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
@@ -62,7 +62,7 @@ class TestEventDetector(EventDetectorTestBase):
             "det_api_version": "1.6.0",
             "history_size": 1000,
             "fix_subdirs": ["local"],
-            }
+        }
 
         self.ed_base_config["config"]["eventdetector"] = {
             "type": self.module_name,

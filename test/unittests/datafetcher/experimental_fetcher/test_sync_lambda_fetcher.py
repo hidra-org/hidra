@@ -32,7 +32,6 @@ from builtins import super  # pylint: disable=redefined-builtin
 
 import json
 import numpy as np
-import os
 import zmq
 
 try:

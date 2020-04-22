@@ -37,7 +37,7 @@ from shutil import copyfile
 import time
 import zmq
 
-from file_fetcher import DataFetcher, Cleaner
+from datafetchers.file_fetcher import DataFetcher, Cleaner
 from .datafetcher_test_base import DataFetcherTestBase
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
@@ -156,6 +156,7 @@ class TestDataFetcher(DataFetcherTestBase):
         kwargs = dict(
             config=self.cleaner_config,
             log_queue=self.log_queue,
+            log_level="debug",
             endpoints=endpoints,
             context=self.context
         )

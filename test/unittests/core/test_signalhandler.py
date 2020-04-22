@@ -164,14 +164,15 @@ class TestSignalHandler(TestBase):
 
         self.receiving_ports = [6005, 6006]
 
-        self.signalhandler_config = {
-            "config": general_config,
-            "endpoints": self.config["endpoints"],
-            "whitelist": None,
-            "ldapuri": "it-ldap-slave.desy.de:1389",
-            "log_queue": self.log_queue,
-            "context": self.context
-        }
+        self.signalhandler_config = dict(
+            config=general_config,
+            endpoints=self.config["endpoints"],
+            whitelist=None,
+            ldapuri="it-ldap-slave.desy.de:1389",
+            log_queue=self.log_queue,
+            log_level="debug",
+            context=self.context
+        )
 
     def send_signal(self, socket, signal, ports, prio=None):
         self.log.info("send_signal : %s, %s", signal, ports)

@@ -36,7 +36,7 @@ import json
 import threading
 
 from kafka import KafkaProducer
-import experimental_events.sync_ewmscp_events as events
+import eventdetectors.experimental_events.sync_ewmscp_events as events
 from ..eventdetector_test_base import EventDetectorTestBase
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'

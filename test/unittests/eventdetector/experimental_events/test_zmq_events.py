@@ -48,7 +48,7 @@ from test_base import (create_dir,
                        MockZmqContext)
 #                       MockZmqSocket,
 #                       MockLogging, mock_get_logger
-import zmq_events
+import eventdetectors.zmq_events as zmq_events
 import hidra.utils as utils
 from ..eventdetector_test_base import EventDetectorTestBase
 

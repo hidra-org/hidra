@@ -42,9 +42,11 @@ import zmq
 
 try:
     import unittest.mock as mock
+    import pathlib
 except ImportError:
     # for python2
     import mock
+    import pathlib2 as pathlib
 
 from test_base import TestBase, create_dir, MockZmqSocket, MockLogging
 from taskprovider import TaskProvider
@@ -173,7 +175,7 @@ class TestTaskProvider(TestBase):
                 }
             },
             "general": {
-                "config_file": "testnotconfig.yaml"
+                "config_file": pathlib.Path("testnotconfig.yaml")
             }
         }
 
@@ -194,7 +196,8 @@ class TestTaskProvider(TestBase):
         kwargs = dict(
             config=self.taskprovider_config,
             endpoints=endpoints,
-            log_queue=self.log_queue
+            log_queue=self.log_queue,
+            log_level="debug"
         )
 
         mocked_fct = "{}.EventDetector.get_new_event".format(
@@ -243,7 +246,8 @@ class TestTaskProvider(TestBase):
         kwargs = dict(
             config=self.taskprovider_config,
             endpoints=endpoints,
-            log_queue=self.log_queue
+            log_queue=self.log_queue,
+            log_level="debug"
         )
         taskprovider_pr = Process(target=TaskProvider, kwargs=kwargs)
         taskprovider_pr.start()
@@ -317,7 +321,8 @@ class TestTaskProvider(TestBase):
         kwargs = dict(
             config=self.taskprovider_config,
             endpoints=endpoints,
-            log_queue=self.log_queue
+            log_queue=self.log_queue,
+            log_level="debug"
         )
         # the method run contains setup and _run
         with mock.patch("taskprovider.TaskProvider.run"):

@@ -32,7 +32,7 @@ from builtins import super  # pylint: disable=redefined-builtin
 
 import json
 
-from no_data_fetcher import DataFetcher
+from datafetchers.no_data_fetcher import DataFetcher
 from .datafetcher_test_base import DataFetcherTestBase
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
