@@ -56,6 +56,7 @@ class DataHandler(Base, threading.Thread):
                  fixed_stream_addr,
                  config,
                  log_queue,
+                 log_level,
                  context,
                  stop_request):
 
@@ -70,6 +71,7 @@ class DataHandler(Base, threading.Thread):
         self.config = self.config_all["general"]
         self.config_df = self.config_all["datafetcher"]
         self.log_queue = log_queue
+        self.log_level = log_level
         self.lock = threading.Lock()
 
         self.log = None
@@ -87,7 +89,9 @@ class DataHandler(Base, threading.Thread):
         """
 
         log_name = "DataHandler-{}".format(self.dispatcher_id)
-        self.log = utils.get_logger(log_name, self.log_queue)
+        self.log = utils.get_logger(log_name,
+                                    queue=self.log_queue,
+                                    log_level=self.log_level)
 
         # dict with information of all open sockets to which a data stream is
         # opened (host, port,...)
@@ -422,7 +426,8 @@ class DataDispatcher(Base):
                  endpoints,
                  fixed_stream_addr,
                  config,
-                 log_queue):
+                 log_queue,
+                 log_level):
 
         super().__init__()
 
@@ -431,6 +436,7 @@ class DataDispatcher(Base):
         self.fixed_stream_addr = fixed_stream_addr
         self.config = config
         self.log_queue = log_queue
+        self.log_level = log_level
 
         self.context = None
         self.poller = None
@@ -446,7 +452,9 @@ class DataDispatcher(Base):
         """
 
         log_name = "DataDispatcher-{}".format(self.dispatcher_id)
-        self.log = utils.get_logger(log_name, self.log_queue)
+        self.log = utils.get_logger(log_name,
+                                    queue=self.log_queue,
+                                    log_level=self.log_level)
 
         signal.signal(signal.SIGTERM, self.signal_term_handler)
         signal.signal(signal.SIGINT, self.signal_term_handler)
@@ -473,6 +481,7 @@ class DataDispatcher(Base):
             fixed_stream_addr=self.fixed_stream_addr,
             config=self.config,
             log_queue=self.log_queue,
+            log_level=self.log_level,
             context=self.context,
             stop_request=self.stop_request
         )

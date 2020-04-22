@@ -52,6 +52,7 @@ try:
             super().__init__(queue, *handlers, respect_handler_level=True)
 
 except AttributeError:
+    # python2
     from logutils.queue import QueueListener, QueueHandler
 
     class CustomQueueListener(QueueListener):
@@ -282,6 +283,22 @@ def get_log_handlers(logfile, logsize, verbose, onscreen_loglevel=False):
         return file_handler, screen_handler
     else:
         return (file_handler,)
+
+
+def get_least_sever_log_level(log_levels):
+    """Determine the least sever log level
+
+    Args:
+        log_levels: A list or tuple of log levels to choose from
+
+    Returns:
+        least sever log level found
+    """
+    severity_order = ("debug", "info", "warning", "error", "critical")
+
+    for level in severity_order:
+        if level in log_levels:
+            return level
 
 
 def get_logger(logger_name, queue=False, log_level="debug"):

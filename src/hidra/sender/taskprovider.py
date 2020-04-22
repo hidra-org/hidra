@@ -55,13 +55,15 @@ class TaskProvider(Base):
     def __init__(self,
                  config,
                  endpoints,
-                 log_queue):
+                 log_queue,
+                 log_level):
 
         super().__init__()
 
         self.config = config
         self.endpoints = endpoints
         self.log_queue = log_queue
+        self.log_level = log_level
 
         self.log = None
         self.eventdetector = None
@@ -84,7 +86,9 @@ class TaskProvider(Base):
         """Initializes parameters and creates sockets.
         """
 
-        self.log = utils.get_logger(self.__class__.__name__, self.log_queue)
+        self.log = utils.get_logger(self.__class__.__name__,
+                                    queue=self.log_queue,
+                                    log_level=self.log_level)
         self.log.info("%s started (PID %s).",
                       self.__class__.__name__, os.getpid())
 

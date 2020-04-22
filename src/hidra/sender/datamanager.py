@@ -482,6 +482,7 @@ class DataManager(Base):
 
         self.log = None
         self.log_queue = None
+        self.log_level = None
         self.log_queue_listener = None
 
         self.localhost = None
@@ -628,8 +629,16 @@ class DataManager(Base):
 
         self.log_queue_listener.start()
 
+        # the least sever log level to forward to the queuelistener
+        file_log_level = "debug" if config_gen["verbose"] else "error"
+        self.log_level = utils.get_least_sever_log_level(
+            log_levels=(config_gen["onscreen"], file_log_level)
+        )
         # Create log and set handler to queue handle
-        self.log = utils.get_logger("DataManager", self.log_queue)
+        self.log = utils.get_logger(self.__class__.__name__,
+                                    queue=self.log_queue,
+                                    log_level=self.log_level)
+        self.log.info("Setting process log level to '%s'", self.log_level)
 
     def _setup_network(self):
         config_gen = self.config["general"]
@@ -781,23 +790,25 @@ class DataManager(Base):
         if self.use_statserver:
             self.statserver = Process(
                 target=StatServer,
-                kwargs={
-                    "config": self.config,
-                    "log_queue": self.log_queue
-                }
+                kwargs=dict(
+                    config=self.config,
+                    log_queue=self.log_queue,
+                    log_level=self.log_level
+                )
             )
             self.statserver.start()
 
         # SignalHandler
         self.signalhandler_pr = Process(
             target=SignalHandler,
-            kwargs={
-                "config": self.config,
-                "endpoints": self.endpoints,
-                "whitelist": self.whitelist,
-                "ldapuri": self.ldapuri,
-                "log_queue": self.log_queue
-            }
+            kwargs=dict(
+                config=self.config,
+                endpoints=self.endpoints,
+                whitelist=self.whitelist,
+                ldapuri=self.ldapuri,
+                log_queue=self.log_queue,
+                log_level=self.log_level
+            )
         )
         self.signalhandler_pr.start()
 
@@ -812,11 +823,12 @@ class DataManager(Base):
         # TaskProvider
         self.taskprovider_pr = Process(
             target=TaskProvider,
-            kwargs={
-                "config": self.config,
-                "endpoints": self.endpoints,
-                "log_queue": self.log_queue
-            }
+            kwargs=dict(
+                config=self.config,
+                endpoints=self.endpoints,
+                log_queue=self.log_queue,
+                log_level=self.log_level
+            )
         )
         self.taskprovider_pr.start()
 
@@ -828,11 +840,11 @@ class DataManager(Base):
 
             self.cleaner_pr = Process(
                 target=self.cleaner_m.Cleaner,
-                kwargs={
-                    "config": self.config,
-                    "log_queue": self.log_queue,
-                    "endpoints": self.endpoints
-                }
+                kwargs=dict(
+                    config=self.config,
+                    log_queue=self.log_queue,
+                    endpoints=self.endpoints
+                )
             )
             self.cleaner_pr.start()
 
@@ -844,13 +856,14 @@ class DataManager(Base):
             dispatcher_id = "{}/{}".format(i, self.number_of_streams)
             proc = Process(
                 target=DataDispatcher,
-                kwargs={
-                    "dispatcher_id": dispatcher_id,
-                    "endpoints": self.endpoints,
-                    "fixed_stream_addr": self.fixed_stream_addr,
-                    "config": self.config,
-                    "log_queue": self.log_queue
-                }
+                kwargs=dict(
+                    dispatcher_id=dispatcher_id,
+                    endpoints=self.endpoints,
+                    fixed_stream_addr=self.fixed_stream_addr,
+                    config=self.config,
+                    log_queue=self.log_queue,
+                    log_level=self.log_level
+                )
             )
             proc.start()
             self.datadispatcher_pr.append(proc)

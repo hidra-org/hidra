@@ -60,6 +60,7 @@ class CleanerBase(Base, ABC):
     def __init__(self,
                  config,
                  log_queue,
+                 log_level,
                  endpoints,
                  context=None):
         """Initial setup
@@ -74,7 +75,9 @@ class CleanerBase(Base, ABC):
         """
         super().__init__()
 
-        self.log = utils.get_logger("Cleaner", log_queue)
+        self.log = utils.get_logger("Cleaner",
+                                    queue=log_queue,
+                                    log_level=log_level)
 
         self.config = config
         self.endpoints = endpoints

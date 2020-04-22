@@ -89,6 +89,7 @@ class SignalHandler(Base):
                  whitelist,
                  ldapuri,
                  log_queue,
+                 log_level,
                  context=None):
 
         super().__init__()
@@ -125,7 +126,8 @@ class SignalHandler(Base):
             "whitelist": whitelist,
             "ldapuri": ldapuri,
             "context": context,
-            "log_queue": log_queue
+            "log_queue": log_queue,
+            "log_level": log_level
         }
 
         self.run()
@@ -138,9 +140,12 @@ class SignalHandler(Base):
         ldapuri = self.init_args["ldapuri"]
         context = self.init_args["context"]
         log_queue = self.init_args["log_queue"]
+        log_level = self.init_args["log_level"]
 
         # Send all logs to the main process
-        self.log = utils.get_logger("SignalHandler", log_queue)
+        self.log = utils.get_logger("SignalHandler",
+                                    queue=log_queue,
+                                    log_level=log_level)
         self.log.info("SignalHandler started (PID %s).", os.getpid())
 
         self.whitelist = utils.extend_whitelist(whitelist, ldapuri, self.log)

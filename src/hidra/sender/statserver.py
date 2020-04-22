@@ -47,11 +47,12 @@ class StatServer(Base):
     outside.
     """
 
-    def __init__(self, config, log_queue):
+    def __init__(self, config, log_queue, log_level):
         super().__init__()
 
         self.config = config
         self.log_queue = log_queue
+        self.log_level = log_level
 
         self.log = None
         self.keep_running = True
@@ -67,7 +68,9 @@ class StatServer(Base):
         self.run()
 
     def _setup(self):
-        self.log = utils.get_logger(self.__class__.__name__, self.log_queue)
+        self.log = utils.get_logger(self.__class__.__name__,
+                                    queue=self.log_queue,
+                                    log_level=self.log_level)
 
         # --------------------------------------------------------------------
         # zmq setup

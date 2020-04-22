@@ -89,6 +89,7 @@ from .utils_logging import (
     get_file_log_handler,
     format_log_filename,
     get_log_handlers,
+    get_least_sever_log_level,
     get_logger,
     init_logging,
     LoggingFunction
@@ -168,6 +169,7 @@ __all__ = [
     "get_file_log_handler",
     "format_log_filename",
     "get_log_handlers",
+    "get_least_sever_log_level",
     "get_logger",
     "init_logging",
     "LoggingFunction",
