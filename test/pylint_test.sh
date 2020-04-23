@@ -2,12 +2,12 @@
 
 pylint -r no \
     ./*.py \
-    src/sender/*.py \
-    src/sender/eventdetectors/*.py \
-    src/sender/datafetchers/*.py \
-    src/APIs \
-    src/receiver/*.py \
-    src/hidra_control/*.py \
+    src/hidra/sender/*.py \
+    src/hidra/sender/eventdetectors/*.py \
+    src/hidra/sender/datafetchers/*.py \
+    src/api/python \
+    src/hidra/receiver/*.py \
+    src/hidra/hidra_control/*.py \
     test/unittests/*.py \
     test/unittests/api/*.py \
     test/unittests/core/*.py \

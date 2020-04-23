@@ -134,13 +134,15 @@ class Control(Base):
         self._check_detector()
 
     def _setup_logging(self):
+        # pylint: disable=redefined-variable-type
+
         # print messages of certain level to screen
         if self.use_log in ["debug", "info", "warning", "error", "critical"]:
             self.log = LoggingFunction(self.use_log)
 
         # use logging
         elif self.use_log:
-            self.log = logging.getLogger("Control")  # pylint: disable=redefined-variable-type
+            self.log = logging.getLogger("Control")
 
         # use no logging at all
         elif self.use_log is None:
@@ -467,8 +469,8 @@ class ReceiverControl(Base):
         # to be ipv4 and ipv6 compatible
         is_ipv6 = is_ipv6_address(log=self.log, ip=host)
         socket_id = get_socket_id(
-                log=self.log, ip=host, port=port, is_ipv6=is_ipv6
-            )
+            log=self.log, ip=host, port=port, is_ipv6=is_ipv6
+        )
 
         self.status_socket = self._start_socket(
             name="status_socket",

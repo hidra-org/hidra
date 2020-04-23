@@ -49,7 +49,8 @@ Example config:
         token: "KmUDdacgBzaOD3NIJvN1NmKGqWKtx0DK-NyPjdpeWkc="
         n_threads: 1
         ingest_mode: INGEST_MODE_TRANSFER_METADATA_ONLY
-        file_regex: '.*/(?P<stream>.*)/scan_(?P<scan_id>.*)/(?P<file_idx_in_scan>.*).tif'
+        file_regex: '.*/(?P<stream>.*)/scan_(?P<scan_id>.*)/'
+                    '(?P<file_idx_in_scan>.*).tif'
         ignore_regex: '.*/.*.metadata$'
 """
 
@@ -185,7 +186,8 @@ class Plugin(object):
 
     def _set_ingest_mode(self, mode):
         if mode == "INGEST_MODE_TRANSFER_METADATA_ONLY":
-            self.ingest_mode = asapo_producer.INGEST_MODE_TRANSFER_METADATA_ONLY
+            self.ingest_mode = (asapo_producer
+                                .INGEST_MODE_TRANSFER_METADATA_ONLY)
             self.data_type = "metadata"
         # TODO data forwarding
 #        elif mode == "INGEST_MODE_TRANSFER_DATA":
@@ -215,7 +217,9 @@ class Plugin(object):
             self.log.debug("Continue existing stream (id %s)", last_asapo_id)
 
             self.log.debug("asapo metadata %s", metadata)
-            _, scan_id, last_file_index = self._parse_file_name(metadata["name"])
+            _, scan_id, last_file_index = self._parse_file_name(
+                metadata["name"]
+            )
 
             last_file_index -= self.file_start_index
 
