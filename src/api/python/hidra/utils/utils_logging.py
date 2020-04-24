@@ -112,7 +112,7 @@ def is_windows():
 
 
 def convert_str_to_log_level(level):
-    """Convert log level corresponding logging equivalent
+    """Convert log level from a string to the corresponding logging equivalent.
 
     Args:
         level: A string describing the log level to use (lower or upper case is
@@ -121,21 +121,7 @@ def convert_str_to_log_level(level):
     Return:
         The corresponding logging level.
     """
-
-    level = level.lower()
-
-    if level == "critical":
-        loglevel = logging.CRITICAL
-    elif level == "error":
-        loglevel = logging.ERROR
-    elif level == "warning":
-        loglevel = logging.WARNING
-    elif level == "info":
-        loglevel = logging.INFO
-    else:
-        loglevel = logging.DEBUG
-
-    return loglevel
+    return getattr(logging, level.upper())
 
 
 def get_stream_log_handler(loglevel="debug", datafmt=None, fmt=None):
@@ -294,7 +280,11 @@ def get_least_sever_log_level(log_levels):
     Returns:
         least sever log level found
     """
-    severity_order = ("debug", "info", "warning", "error", "critical")
+    if log_levels and isinstance(log_levels[0], str):
+        severity_order = ("debug", "info", "warning", "error", "critical")
+    else:
+        severity_order = (logging.DEBUG, logging.INFO, logging.WARNING,
+                          logging.ERROR, logging.CRITICAL)
 
     for level in severity_order:
         if level in log_levels:
