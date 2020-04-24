@@ -1,5 +1,6 @@
 """ Installing hidra """
 
+import ast
 import io
 import os
 
@@ -42,7 +43,8 @@ def get_version():
         version_file = os.path.join(CURRENT_DIR, "src", "api", "python",
                                     "hidra", "utils", "_version.py")
         with open(version_file) as f:
-            exec(f.read(), about)
+            # exec(f.read(), about)
+            about["__version__"] = ast.parse(f.read()).body[0].value.s
     else:
         about["__version__"] = VERSION
 
