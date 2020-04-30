@@ -843,6 +843,7 @@ class DataManager(Base):
                 kwargs=dict(
                     config=self.config,
                     log_queue=self.log_queue,
+                    log_level=self.log_level,
                     endpoints=self.endpoints
                 )
             )
