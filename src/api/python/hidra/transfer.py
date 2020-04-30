@@ -1924,6 +1924,7 @@ class Transfer(Base):
 #                self.log.error(exc_value, exc_info=True)
 
                 self.status = [b"ERROR",
+                               time.strftime("%Y-%m-%d %H:%M:%S").encode("utf-8"),
                                str(exc_type).encode("utf-8"),
                                str(exc_value).encode("utf-8")]
                 self.log.debug("Status changed to: %s", self.status)
