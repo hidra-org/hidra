@@ -296,7 +296,6 @@ class TaskProvider(Base):
             message = [message_dict]
             if requests != ["None"]:
                 message.append(json.dumps(requests).encode("utf-8"))
-            self.log.debug(str(message))
 
             while True:
                 try:

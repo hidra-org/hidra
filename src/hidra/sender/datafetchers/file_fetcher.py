@@ -144,13 +144,9 @@ class DataFetcher(DataFetcherBase):
 
         if targets:
             try:
-                self.log.debug("get filesize for '%s'...", self.source_file)
                 filesize = os.path.getsize(self.source_file)
                 file_mod_time = os.stat(self.source_file).st_mtime
                 file_create_time = os.stat(self.source_file).st_ctime
-                self.log.debug("filesize(%s) = %s", self.source_file, filesize)
-                self.log.debug("file_mod_time(%s) = %s", self.source_file,
-                               file_mod_time)
 
             except Exception:
                 self.log.error("Unable to create metadata dictionary.")

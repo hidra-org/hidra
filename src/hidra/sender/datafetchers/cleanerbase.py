@@ -163,7 +163,7 @@ class CleanerBase(Base, ABC):
             if (self.confirmation_socket in socks
                     and socks[self.confirmation_socket] == zmq.POLLIN):
 
-                self.log.debug("Waiting for confirmation")
+                # self.log.debug("Waiting for confirmation")
                 message = self.confirmation_socket.recv_multipart()
 
                 topic = message[0]
@@ -175,9 +175,8 @@ class CleanerBase(Base, ABC):
                 else:
                     chunk_number = None
 
-                self.log.debug("topic=%s", topic)
-                self.log.debug("New confirmation received: %s", file_id)
-                self.log.debug("chunk_number=%s", chunk_number)
+                self.log.debug("New confirmation received from %s: %s (chunk "
+                               "%s)", topic, file_id, chunk_number)
 
                 if file_id in confirmations and chunk_number != 0:
                     confirmations[file_id]["count"] += 1
@@ -190,8 +189,8 @@ class CleanerBase(Base, ABC):
                         "chunks": [chunk_number]
                     }
 
-                self.log.debug("jobs=%s", jobs)
-#                self.log.debug("confirmations={}".format(confirmations))
+                # self.log.debug("jobs=%s", jobs)
+                # self.log.debug("confirmations={}".format(confirmations))
 
                 if file_id in jobs:
                     this_confirm = confirmations[file_id]
@@ -217,8 +216,9 @@ class CleanerBase(Base, ABC):
                             this_confirm["count"] = len(received_chunks)
                             this_confirm["chunks"] = received_chunks
                 else:
-                    self.log.debug("confirmations without job notification "
-                                   "received: %s", file_id)
+                    # self.log.debug("confirmations without job notification "
+                    #                "received: %s", file_id)
+                    pass
 
             # ----------------------------------------------------------------
             # messages from DataFetcher
@@ -226,7 +226,7 @@ class CleanerBase(Base, ABC):
             if (self.job_socket in socks
                     and socks[self.job_socket] == zmq.POLLIN):
 
-                self.log.debug("Waiting for job")
+                # self.log.debug("Waiting for job")
                 message = self.job_socket.recv_multipart()
                 self.log.debug("New job received: %s", message)
 

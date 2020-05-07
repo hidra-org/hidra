@@ -201,8 +201,7 @@ class DataHandler(Base, threading.Thread):
 
                 try:
                     message = self.router_socket.recv_multipart()
-                    self.log.debug("New job received")
-                    self.log.debug("message = %s", message)
+                    self.log.debug("New job received: %s", message)
                 except Exception:
                     self.log.error("Waiting for new job...failed",
                                    exc_info=True)
