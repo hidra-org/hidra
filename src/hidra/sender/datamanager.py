@@ -257,6 +257,8 @@ class CheckReceiver(Base):
         self.reestablish_time = 600  # in sec
         self.zmq_again_occurred = 0
 
+        self.show_check_warning = True
+
     def enable_status_check(self):
         """ Check the status of ther reciever (REQ-REP) """
 
@@ -273,6 +275,7 @@ class CheckReceiver(Base):
             endpoint="tcp://{}".format(self.address)
         )
         self.is_req = True
+        self.check_target_host = self._check_target_host
 
     def enable_alive_test(self):
         """ Check if the receiver is alive by tracking the data socket"""
@@ -290,17 +293,30 @@ class CheckReceiver(Base):
             endpoint="tcp://{}".format(self.address)
         )
         self.is_req = False
+        self.check_target_host = self._check_target_host
 
+    # pylint: disable=method-hidden
+    # pylint: disable=unused-argument
     def check_target_host(self, use_log=False):
-        """Communicates to the receiver and checks response.
+        """No checking is done if there was no test type activated.
 
         Args:
             use_log (optional, bool): if log messages should be generated.
         """
 
-        if self.socket_conf is None:
+        # only show the warning once at the beginning
+        if self.show_check_warning:
             self.log.warning("No communication type enabled.")
-            return True
+            self.show_check_warning = False
+
+        return True
+
+    def _check_target_host(self, use_log=False):
+        """Communicates to the receiver and checks response.
+
+        Args:
+            use_log (optional, bool): if log messages should be generated.
+        """
 
         # no data stream used means that no receiver is used
         # -> status always is fine
