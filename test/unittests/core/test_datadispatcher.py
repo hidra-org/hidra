@@ -32,9 +32,9 @@ from builtins import super  # pylint: disable=redefined-builtin
 
 import copy
 import json
+import multiprocessing
 import os
 from shutil import copyfile
-import threading
 import time
 import zmq
 
@@ -118,7 +118,7 @@ class TestDataDispatcher(TestBase):
             log_queue=self.log_queue,
             log_level="debug",
             context=self.context,
-            stop_request=threading.Event()
+            stop_request=multiprocessing.Event()
         )
 
         with mock.patch("threading.Thread"):
@@ -167,7 +167,7 @@ class TestDataDispatcher(TestBase):
             endpoint=endpoints.control_sub_bind
         )
 
-        stop_request = threading.Event()
+        stop_request = multiprocessing.Event()
 
         kwargs = dict(
             dispatcher_id=1,

@@ -93,9 +93,11 @@ class TestStatServer(TestBase):
             endpoint=self.endpoints.control_sub_bind
         )
 
+        stop_request = multiprocessing.Event()
+
         self.server = multiprocessing.Process(
             target=StatServer,
-            args=(self.statserver_config, self.log_queue, "debug")
+            args=(self.statserver_config, self.log_queue, "debug", stop_request)
         )
         self.server.start()
         time.sleep(0.1)

@@ -650,9 +650,13 @@ class DataManager(Base):
 
         # the least sever log level to forward to the queuelistener
         file_log_level = "debug" if config_gen["verbose"] else "error"
-        self.log_level = utils.get_least_sever_log_level(
-            log_levels=(config_gen["onscreen"], file_log_level)
-        )
+        if config_gen["onscreen"]:
+            self.log_level = utils.get_least_sever_log_level(
+                log_levels=(config_gen["onscreen"], file_log_level)
+            )
+        else:
+            self.log_level = file_log_level
+
         # Create log and set handler to queue handle
         self.log = utils.get_logger(self.__class__.__name__,
                                     queue=self.log_queue,

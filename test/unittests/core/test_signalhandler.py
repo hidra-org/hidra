@@ -38,7 +38,7 @@ import datetime
 import inspect
 import json
 import logging
-from multiprocessing import freeze_support
+import multiprocessing
 import os
 import re
 import threading
@@ -137,7 +137,7 @@ class TestSignalHandler(TestBase):
         super().setUp()
 
         # see https://docs.python.org/2/library/multiprocessing.html#windows
-        freeze_support()
+        multiprocessing.freeze_support()
 
         # attributes inherited from parent class:
         # self.config
@@ -171,6 +171,7 @@ class TestSignalHandler(TestBase):
             ldapuri="it-ldap-slave.desy.de:1389",
             log_queue=self.log_queue,
             log_level="debug",
+            stop_request=multiprocessing.Event(),
             context=self.context
         )
 

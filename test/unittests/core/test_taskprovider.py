@@ -31,7 +31,7 @@ from __future__ import unicode_literals
 from builtins import super  # pylint: disable=redefined-builtin
 
 import json
-from multiprocessing import Process, freeze_support
+from multiprocessing import Process, freeze_support, Event
 import os
 import time
 import threading
@@ -185,6 +185,7 @@ class TestTaskProvider(TestBase):
     def test_taskprovider_terminate(self):
         """Simulate start up with wrong configuration.
         """
+        stop_request = Event()
 
         endpoints = self.config["endpoints"]
         event_message_list = [{
@@ -197,7 +198,8 @@ class TestTaskProvider(TestBase):
             config=self.taskprovider_config,
             endpoints=endpoints,
             log_queue=self.log_queue,
-            log_level="debug"
+            log_level="debug",
+            stop_request=stop_request
         )
 
         mocked_fct = "{}.EventDetector.get_new_event".format(
@@ -241,13 +243,15 @@ class TestTaskProvider(TestBase):
         """Simulate incoming data and check if received events are correct.
         """
 
+        stop_request = Event()
         endpoints = self.config["endpoints"]
 
         kwargs = dict(
             config=self.taskprovider_config,
             endpoints=endpoints,
             log_queue=self.log_queue,
-            log_level="debug"
+            log_level="debug",
+            stop_request=stop_request
         )
         taskprovider_pr = Process(target=TaskProvider, kwargs=kwargs)
         taskprovider_pr.start()
@@ -316,13 +320,15 @@ class TestTaskProvider(TestBase):
         """Simulate incoming data and check if received events are correct.
         """
 
+        stop_request = Event()
         endpoints = self.config["endpoints"]
 
         kwargs = dict(
             config=self.taskprovider_config,
             endpoints=endpoints,
             log_queue=self.log_queue,
-            log_level="debug"
+            log_level="debug",
+            stop_request=stop_request
         )
         # the method run contains setup and _run
         with mock.patch("taskprovider.TaskProvider.run"):
@@ -331,7 +337,6 @@ class TestTaskProvider(TestBase):
         taskprovider.log = MockLogging()
         taskprovider.log.error = mock.MagicMock()
         taskprovider.eventdetector = mock.MagicMock()
-        taskprovider.keep_running = True
         taskprovider._check_control_socket = mock.MagicMock()
 
         taskprovider.context = self.context
