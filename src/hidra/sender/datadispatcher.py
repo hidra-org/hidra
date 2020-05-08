@@ -98,7 +98,12 @@ class DataHandler(Base, threading.Thread):
         self.open_connections = dict()
 
         self.log.info("Loading data fetcher: %s", self.config_df["type"])
-        datafetcher_m = import_module(self.config_df["type"])
+        try:
+            datafetcher_m = import_module(self.config_df["type"])
+        except Exception:
+            self.log.error("Could not load data fetcher %s",
+                           self.config_df["type"], exc_info=True)
+            raise
 
         datafetcher_base_config = {
             "config": self.config_all,
