@@ -47,15 +47,15 @@ class StatServer(Base):
     outside.
     """
 
-    def __init__(self, config, log_queue, log_level):
+    def __init__(self, config, log_queue, log_level, stop_request):
         super().__init__()
 
         self.config = config
         self.log_queue = log_queue
         self.log_level = log_level
+        self.stop_request = stop_request
 
         self.log = None
-        self.keep_running = True
         self.stats = {"config": config}
 
         self.ipc_dir_umask = 0o001
@@ -125,7 +125,7 @@ class StatServer(Base):
         """
         self._setup()
 
-        while self.keep_running:
+        while not self.stop_request.is_set():
             socks = dict(self.poller.poll())
 
             # ----------------------------------------------------------------
@@ -190,7 +190,7 @@ class StatServer(Base):
     def stop(self):
         """Stop and clean up.
         """
-        self.keep_running = False
+        self.stop_request.set()
 
         self.stop_socket(name="stats_collect_socket")
         self.stop_socket(name="control_socket")

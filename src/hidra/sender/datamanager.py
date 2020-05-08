@@ -39,7 +39,7 @@ import argparse
 from distutils.version import LooseVersion
 from importlib import import_module
 import logging
-from multiprocessing import Process, freeze_support, Queue
+import multiprocessing
 import os
 import tempfile
 import time
@@ -492,6 +492,8 @@ class DataManager(Base):
 
         super().__init__()
 
+        self.stop_request = None
+
         self.device = None
         self.control_pub_socket = None
         self.context = None
@@ -548,6 +550,7 @@ class DataManager(Base):
             config (dict): All the configuration set either via config file or
                            command line parameter.
         """
+        self.stop_request = multiprocessing.Event()
 
         self.localhost = "127.0.0.1"
         self.current_pid = os.getpid()
@@ -629,7 +632,7 @@ class DataManager(Base):
         config_gen = self.config["general"]
 
         # Get queue
-        self.log_queue = Queue(-1)
+        self.log_queue = multiprocessing.Queue(-1)
 
         handler = utils.get_log_handlers(
             config_gen["log_file"],
@@ -804,18 +807,19 @@ class DataManager(Base):
 
         # StatServer
         if self.use_statserver:
-            self.statserver = Process(
+            self.statserver = multiprocessing.Process(
                 target=StatServer,
                 kwargs=dict(
                     config=self.config,
                     log_queue=self.log_queue,
-                    log_level=self.log_level
+                    log_level=self.log_level,
+                    stop_request=self.stop_request
                 )
             )
             self.statserver.start()
 
         # SignalHandler
-        self.signalhandler_pr = Process(
+        self.signalhandler_pr = multiprocessing.Process(
             target=SignalHandler,
             kwargs=dict(
                 config=self.config,
@@ -823,7 +827,8 @@ class DataManager(Base):
                 whitelist=self.whitelist,
                 ldapuri=self.ldapuri,
                 log_queue=self.log_queue,
-                log_level=self.log_level
+                log_level=self.log_level,
+                stop_request=self.stop_request
             )
         )
         self.signalhandler_pr.start()
@@ -837,13 +842,14 @@ class DataManager(Base):
             return
 
         # TaskProvider
-        self.taskprovider_pr = Process(
+        self.taskprovider_pr = multiprocessing.Process(
             target=TaskProvider,
             kwargs=dict(
                 config=self.config,
                 endpoints=self.endpoints,
                 log_queue=self.log_queue,
-                log_level=self.log_level
+                log_level=self.log_level,
+                stop_request=self.stop_request
             )
         )
         self.taskprovider_pr.start()
@@ -854,13 +860,14 @@ class DataManager(Base):
                           self.config["datafetcher"]["type"])
             self.cleaner_m = import_module(self.config["datafetcher"]["type"])
 
-            self.cleaner_pr = Process(
+            self.cleaner_pr = multiprocessing.Process(
                 target=self.cleaner_m.Cleaner,
                 kwargs=dict(
                     config=self.config,
                     log_queue=self.log_queue,
                     log_level=self.log_level,
-                    endpoints=self.endpoints
+                    endpoints=self.endpoints,
+                    stop_request=self.stop_request
                 )
             )
             self.cleaner_pr.start()
@@ -871,7 +878,7 @@ class DataManager(Base):
         # DataDispatcher
         for i in range(self.number_of_streams):
             dispatcher_id = "{}/{}".format(i, self.number_of_streams)
-            proc = Process(
+            proc = multiprocessing.Process(
                 target=DataDispatcher,
                 kwargs=dict(
                     dispatcher_id=dispatcher_id,
@@ -879,7 +886,8 @@ class DataManager(Base):
                     fixed_stream_addr=self.fixed_stream_addr,
                     config=self.config,
                     log_queue=self.log_queue,
-                    log_level=self.log_level
+                    log_level=self.log_level,
+                    stop_request=self.stop_request
                 )
             )
             proc.start()
@@ -1099,7 +1107,7 @@ def main():
     """
 
     # see https://docs.python.org/2/library/multiprocessing.html#windows
-    freeze_support()
+    multiprocessing.freeze_support()
 
     sender = None  # pylint: disable=invalid-name
     try:

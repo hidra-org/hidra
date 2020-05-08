@@ -426,7 +426,8 @@ class DataDispatcher(Base):
                  fixed_stream_addr,
                  config,
                  log_queue,
-                 log_level):
+                 log_level,
+                 stop_request):
 
         super().__init__()
 
@@ -436,13 +437,13 @@ class DataDispatcher(Base):
         self.config = config
         self.log_queue = log_queue
         self.log_level = log_level
+        self.stop_request = stop_request
 
         self.context = None
         self.poller = None
         self.control_socket = None
         self.datahandler = None
         self.stopped = None
-        self.stop_request = threading.Event()
 
         self.run()
 

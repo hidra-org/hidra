@@ -56,7 +56,8 @@ class TaskProvider(Base):
                  config,
                  endpoints,
                  log_queue,
-                 log_level):
+                 log_level,
+                 stop_request):
 
         super().__init__()
 
@@ -64,6 +65,7 @@ class TaskProvider(Base):
         self.endpoints = endpoints
         self.log_queue = log_queue
         self.log_level = log_level
+        self.stop_request = stop_request
 
         self.log = None
         self.eventdetector = None
@@ -76,7 +78,6 @@ class TaskProvider(Base):
         self.timeout = None
 
         self.eventdetector = None
-        self.keep_running = None
         self.stopped = None
         self.ignore_accumulated_events = None
 
@@ -123,8 +124,6 @@ class TaskProvider(Base):
                 "context": self.context
             }
         )
-
-        self.keep_running = True
 
         try:
             self.create_sockets()
@@ -208,7 +207,7 @@ class TaskProvider(Base):
         """Reacts on events and combines them to external signals.
         """
 
-        while self.keep_running:
+        while not self.stop_request.is_set():
 
             # ----------------------------------------------------------------
             # get events
@@ -241,7 +240,7 @@ class TaskProvider(Base):
             # process events
             # ----------------------------------------------------------------
             for workload in workload_list:
-                if not self.keep_running:
+                if self.stop_request.is_set():
                     break
                 self._process_workload(workload)
 
@@ -336,7 +335,7 @@ class TaskProvider(Base):
         Reaction to exit signal from control socket.
         """
         self.log.debug("Requested to shut down.")
-        self.keep_running = False
+        self.stop_request.set()
 
     def _react_to_wakeup_signal(self, message):
         """Overwrite the base class reaction method to wakeup signal.
@@ -355,7 +354,7 @@ class TaskProvider(Base):
         """close sockets and clean up
         """
 
-        self.keep_running = False
+        self.stop_request.set()
         self.wait_for_stopped()
 
         if self.eventdetector is not None:
@@ -377,10 +376,10 @@ class TaskProvider(Base):
         """
 
         self.log.debug('got SIGTERM')
-        self.keep_running = False
-        # calling stop here would set keep_running to False but this would not
-        # be propagated to _run because stop would block the thread
-        # by setting keep_running explicitly the main loop is given the
+        self.stop_request.set()
+        # Balling stop here would set stop_request but this would not be
+        # propagated to _run because stop would block the thread.
+        # By setting stop_request explicitly the main loop is given the
         # possibility to stop by itself
 
     def __exit__(self, exception_type, exception_value, traceback):

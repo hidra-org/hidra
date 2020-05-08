@@ -90,6 +90,7 @@ class SignalHandler(Base):
                  ldapuri,
                  log_queue,
                  log_level,
+                 stop_request,
                  context=None):
 
         super().__init__()
@@ -99,6 +100,7 @@ class SignalHandler(Base):
         # signal handler does not have a stripped down config
         self.config = config
         self.endpoints = endpoints
+        self.stop_request = stop_request
 
         self.log = None
 
@@ -316,7 +318,7 @@ class SignalHandler(Base):
 
         # run loop, and wait for incoming messages
         self.log.debug("Waiting for new signals or requests.")
-        while True:
+        while not self.stop_request.is_set():
             socks = dict(self.poller.poll())
 
             # ----------------------------------------------------------------
@@ -1062,6 +1064,8 @@ class SignalHandler(Base):
         """Close sockets and clean up.
         """
         super().stop()
+
+        self.stop_request.set()
 
         self.log.debug("Closing sockets for SignalHandler")
 

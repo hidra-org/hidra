@@ -35,6 +35,7 @@ from __future__ import unicode_literals
 from builtins import super  # pylint: disable=redefined-builtin
 
 import abc
+import os
 import sys
 import zmq
 
@@ -62,25 +63,20 @@ class CleanerBase(Base, ABC):
                  log_queue,
                  log_level,
                  endpoints,
+                 stop_request,
                  context=None):
-        """Initial setup
 
-        Args:
-             config (dict): A dictionary containing the configuration
-                            parameters.
-             log_queue: The multiprocessing queue which is used for logging.
-             endpoints: The ZMQ endpoints to use.
-             context (optional): The ZMQ context to be used.
-
-        """
         super().__init__()
 
         self.log = utils.get_logger("Cleaner",
                                     queue=log_queue,
                                     log_level=log_level)
+        self.log.info("%s started (PID %s).",
+                      self.__class__.__name__, os.getpid())
 
         self.config = config
         self.endpoints = endpoints
+        self.stop_request = stop_request
 
         self.job_socket = None
         self.confirmation_socket = None
@@ -88,8 +84,6 @@ class CleanerBase(Base, ABC):
 
         self.confirm_topic = None
         self.poller = None
-
-        self.continue_run = True
 
         if context:
             self.context = context
@@ -154,7 +148,7 @@ class CleanerBase(Base, ABC):
         confirmations = {}
         jobs = {}
 
-        while self.continue_run:
+        while not self.stop_request.is_set():
             socks = dict(self.poller.poll())
 
             # ----------------------------------------------------------------
@@ -316,6 +310,8 @@ class CleanerBase(Base, ABC):
     def stop(self):
         """ Clean up sockets and zmq environment.
         """
+
+        self.stop_request.set()
 
         self.stop_socket(name="job_socket")
         self.stop_socket(name="confirmation_socket")
