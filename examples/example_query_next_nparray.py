@@ -31,7 +31,6 @@ from __future__ import unicode_literals
 import argparse
 import socket
 
-import _environment  # noqa F401 # pylint: disable=unused-import
 from hidra import Transfer
 
 

@@ -33,7 +33,6 @@ import hashlib
 import socket
 import sys
 
-import _environment  # noqa F401 # pylint: disable=unused-import
 from hidra import Transfer
 
 
