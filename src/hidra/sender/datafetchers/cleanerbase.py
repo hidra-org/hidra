@@ -53,6 +53,126 @@ else:
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 
+class ConfirmationTracking(object):
+    """ Handles tracking of jobs and confirmations. """
+
+    def __init__(self, log_queue, log_level):
+        self.confirmations = {}
+        self.jobs = {}
+
+        self.log = utils.get_logger(self.__class__.__name__,
+                                    queue=log_queue,
+                                    log_level=log_level)
+
+    def _decode_confirmation_message(self, message):
+        topic = message[0]
+        file_id = message[1].decode("utf-8")
+
+        # backward compatibility with versions <= 4.0.7
+        if len(message) > 2:
+            chunk_number = int(message[2].decode("utf-8"))
+        else:
+            chunk_number = None
+
+        return topic, file_id, chunk_number
+
+    def process_confirmation(self, file_id, chunk_number):
+        """ A new confirmation was received
+
+        Returns:
+            The base path corresponding to the file_id in case the file is
+                complete.
+            None otherwise.
+        """
+
+        if file_id in self.confirmations and chunk_number != 0:
+            self.confirmations[file_id]["count"] += 1
+            self.confirmations[file_id]["chunks"].append(chunk_number)
+        else:
+            # either new confirmation or
+            # file transfer was aborted and restarted -> reset chunks
+            self.confirmations[file_id] = {
+                "count": 1,
+                "chunks": [chunk_number]
+            }
+
+        # self.log.debug("jobs=%s", jobs)
+        # self.log.debug("confirmations={}".format(confirmations))
+
+        if file_id in self.jobs:
+            this_confirm = self.confirmations[file_id]
+            this_job = self.jobs[file_id]
+
+            if this_confirm["count"] >= this_job["n_chunks"]:
+
+                # check that all chunks were received:
+                received_chunks = list(set(this_confirm["chunks"]))
+                if (len(received_chunks) == this_job["n_chunks"]
+                        # backward compatibility with versions <= 4.0.7
+                        or received_chunks == [None]):
+                    return this_job["base_path"]
+                    # self.remove_element(this_job["base_path"], file_id)
+                    # del self.confirmations[file_id]
+                    # del self.jobs[file_id]
+                else:
+                    # correct count
+                    self.log.info("More confirmations received than "
+                                  "chunks sent for file %s.", file_id)
+                    self.log.debug("chunks received=%s",
+                                   this_confirm["chunks"])
+
+                    this_confirm["count"] = len(received_chunks)
+                    this_confirm["chunks"] = received_chunks
+        else:
+            # self.log.debug("confirmations without job notification "
+            #                "received: %s", file_id)
+            pass
+
+    def process_job(self, base_path, file_id, n_chunks):
+        """ Checks the job for matching confirmations
+
+        Returns:
+            True, if all confirmations where already received.
+            None otherwise.
+        """
+
+        if (file_id in self.confirmations
+                and self.confirmations[file_id]["count"] >= n_chunks):
+
+            this_confirm = self.confirmations[file_id]
+
+            # check that all chunks were received:
+            received_chunks = list(set(this_confirm["chunks"]))
+            if (len(received_chunks) == n_chunks
+                    # backward compatibility with versions <= 4.0.7
+                    or received_chunks == [None]):
+                return True
+                # self.remove_element(base_path, file_id)
+                # del self.confirmations[file_id]
+            else:
+                # correct count
+                self.log.info("More confirmations received than "
+                              "chunks sent for file %s.", file_id)
+                self.log.debug("chunks received=%s",
+                               this_confirm["chunks"])
+
+                this_confirm["count"] = len(received_chunks)
+                this_confirm["chunks"] = received_chunks
+        else:
+            self.jobs[file_id] = {
+                "base_path": base_path,
+                "n_chunks": n_chunks
+            }
+
+    def remove_entry(self, file_id):
+        """ Clean up the tracking after the file is removed """
+        try:
+            del self.confirmations[file_id]
+            del self.jobs[file_id]
+        except KeyError:
+            pass
+
+
 class CleanerBase(Base, ABC):
     """
     Implementation of the cleaner base class.
@@ -68,7 +188,7 @@ class CleanerBase(Base, ABC):
 
         super().__init__()
 
-        self.log = utils.get_logger("Cleaner",
+        self.log = utils.get_logger(self.__class__.__name__,
                                     queue=log_queue,
                                     log_level=log_level)
         self.log.info("%s started (PID %s).",
@@ -77,6 +197,7 @@ class CleanerBase(Base, ABC):
         self.config = config
         self.endpoints = endpoints
         self.stop_request = stop_request
+        self.stopped = None
 
         self.job_socket = None
         self.confirmation_socket = None
@@ -84,6 +205,9 @@ class CleanerBase(Base, ABC):
 
         self.confirm_topic = None
         self.poller = None
+
+        self.tracker = ConfirmationTracking(log_queue=log_queue,
+                                            log_level=log_level)
 
         if context:
             self.context = context
@@ -142,11 +266,19 @@ class CleanerBase(Base, ABC):
         self.poller.register(self.control_socket, zmq.POLLIN)
 
     def run(self):
-        """Doing the actual work.
+        """Process jobs and confirmations.
         """
 
-        confirmations = {}
-        jobs = {}
+        self.stopped = False
+        try:
+            self._run()
+        finally:
+            self.stopped = True
+            self.stop()
+
+    def _run(self):
+        """Doing the actual work.
+        """
 
         while not self.stop_request.is_set():
             socks = dict(self.poller.poll())
@@ -172,47 +304,13 @@ class CleanerBase(Base, ABC):
                 self.log.debug("New confirmation received from %s: %s (chunk "
                                "%s)", topic, file_id, chunk_number)
 
-                if file_id in confirmations and chunk_number != 0:
-                    confirmations[file_id]["count"] += 1
-                    confirmations[file_id]["chunks"].append(chunk_number)
-                else:
-                    # either new confirmation or
-                    # file transfer was aborted and restarted -> reset chunks
-                    confirmations[file_id] = {
-                        "count": 1,
-                        "chunks": [chunk_number]
-                    }
+                base_path = self.tracker.process_confirmation(
+                    file_id=file_id, chunk_number=chunk_number
+                )
 
-                # self.log.debug("jobs=%s", jobs)
-                # self.log.debug("confirmations={}".format(confirmations))
-
-                if file_id in jobs:
-                    this_confirm = confirmations[file_id]
-                    this_job = jobs[file_id]
-
-                    if this_confirm["count"] >= this_job["n_chunks"]:
-
-                        # check that all chunks were received:
-                        received_chunks = list(set(this_confirm["chunks"]))
-                        if (len(received_chunks) == this_job["n_chunks"]
-                                # backward compatibility with versions <= 4.0.7
-                                or received_chunks == [None]):
-                            self.remove_element(this_job["base_path"], file_id)
-                            del confirmations[file_id]
-                            del jobs[file_id]
-                        else:
-                            # correct count
-                            self.log.info("More confirmations received than "
-                                          "chunks sent for file %s.", file_id)
-                            self.log.debug("chunks received=%s",
-                                           this_confirm["chunks"])
-
-                            this_confirm["count"] = len(received_chunks)
-                            this_confirm["chunks"] = received_chunks
-                else:
-                    # self.log.debug("confirmations without job notification "
-                    #                "received: %s", file_id)
-                    pass
+                if base_path:
+                    self.remove_element(base_path, file_id)
+                    self.tracker.remove_entry(file_id)
 
             # ----------------------------------------------------------------
             # messages from DataFetcher
@@ -228,32 +326,11 @@ class CleanerBase(Base, ABC):
                 file_id = message[1].decode("utf-8")
                 n_chunks = int(message[2].decode("utf-8"))
 
-                if (file_id in confirmations
-                        and confirmations[file_id]["count"] >= n_chunks):
-
-                    this_confirm = confirmations[file_id]
-
-                    # check that all chunks were received:
-                    received_chunks = list(set(this_confirm["chunks"]))
-                    if (len(received_chunks) == n_chunks
-                            # backward compatibility with versions <= 4.0.7
-                            or received_chunks == [None]):
-                        self.remove_element(base_path, file_id)
-                        del confirmations[file_id]
-                    else:
-                        # correct count
-                        self.log.info("More confirmations received than "
-                                      "chunks sent for file %s.", file_id)
-                        self.log.debug("chunks received=%s",
-                                       this_confirm["chunks"])
-
-                        this_confirm["count"] = len(received_chunks)
-                        this_confirm["chunks"] = received_chunks
-                else:
-                    jobs[file_id] = {
-                        "base_path": base_path,
-                        "n_chunks": n_chunks
-                    }
+                if self.tracker.process_job(base_path=base_path,
+                                            file_id=file_id,
+                                            n_chunks=n_chunks):
+                    self.remove_element(base_path, file_id)
+                    self.tracker.remove_entry(file_id)
 
             # ----------------------------------------------------------------
             # control commands
@@ -312,6 +389,7 @@ class CleanerBase(Base, ABC):
         """
 
         self.stop_request.set()
+        self.wait_for_stopped()
 
         self.stop_socket(name="job_socket")
         self.stop_socket(name="confirmation_socket")
@@ -321,11 +399,3 @@ class CleanerBase(Base, ABC):
             self.log.debug("Destroying context")
             self.context.destroy(0)
             self.context = None
-
-    def __exit__(self, exception_type, exception_value, traceback):
-        self.stop()
-
-    def __del__(self):
-        self.stop()
-
-# testing was moved into test/unittests/datafetchers/test_cleanerbase.py
