@@ -218,11 +218,6 @@ class CleanerBase(Base, ABC):
 
         self.create_sockets()
 
-        try:
-            self.run()
-        except KeyboardInterrupt:
-            pass
-
     def create_sockets(self):
         """Sets up the ZMQ sockets.
         """
@@ -272,6 +267,11 @@ class CleanerBase(Base, ABC):
         self.stopped = False
         try:
             self._run()
+        except KeyboardInterrupt:
+            pass
+        except Exception:
+            self.log.error("Stopping Cleaner due to unknown error condition.",
+                           exc_info=True)
         finally:
             self.stopped = True
             self.stop()

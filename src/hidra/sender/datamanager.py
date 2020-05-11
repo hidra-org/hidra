@@ -73,10 +73,10 @@ from hidra import __version__  # noqa E402
 
 # pylint: disable=wrong-import-position
 from base_class import Base  # noqa E402
-from signalhandler import SignalHandler  # noqa E402
-from taskprovider import TaskProvider  # noqa E402
-from datadispatcher import DataDispatcher  # noqa E402
-from statserver import StatServer  # noqa E402
+from signalhandler import run_signalhandler  # noqa E402
+from taskprovider import run_taskprovider  # noqa E402
+from datadispatcher import run_datadispatcher  # noqa E402
+from statserver import run_statserver  # noqa E402
 
 from _environment import BASE_DIR  # noqa E402 # pylint: disable=unused-import
 
@@ -511,7 +511,6 @@ class DataManager(Base):
 
         self.ipc_dir_permissions = 0o777
 
-        self.continue_run = None
         self.config = None
 
         self.whitelist = None
@@ -554,7 +553,6 @@ class DataManager(Base):
 
         self.localhost = "127.0.0.1"
         self.current_pid = os.getpid()
-        self.continue_run = True
 
         try:
             if config is None:
@@ -812,7 +810,7 @@ class DataManager(Base):
         # StatServer
         if self.use_statserver:
             self.statserver = multiprocessing.Process(
-                target=StatServer,
+                target=run_statserver,
                 kwargs=dict(
                     config=self.config,
                     log_queue=self.log_queue,
@@ -824,7 +822,7 @@ class DataManager(Base):
 
         # SignalHandler
         self.signalhandler_pr = multiprocessing.Process(
-            target=SignalHandler,
+            target=run_signalhandler,
             kwargs=dict(
                 config=self.config,
                 endpoints=self.endpoints,
@@ -847,7 +845,7 @@ class DataManager(Base):
 
         # TaskProvider
         self.taskprovider_pr = multiprocessing.Process(
-            target=TaskProvider,
+            target=run_taskprovider,
             kwargs=dict(
                 config=self.config,
                 endpoints=self.endpoints,
@@ -864,8 +862,14 @@ class DataManager(Base):
                           self.config["datafetcher"]["type"])
             self.cleaner_m = import_module(self.config["datafetcher"]["type"])
 
+            def run_cleaner(**kwargs):
+                """ Wrapper to run in a process or thread"""
+
+                proc = self.cleaner_m.Cleaner(**kwargs)
+                proc.run()
+
             self.cleaner_pr = multiprocessing.Process(
-                target=self.cleaner_m.Cleaner,
+                target=run_cleaner,
                 kwargs=dict(
                     config=self.config,
                     log_queue=self.log_queue,
@@ -883,7 +887,7 @@ class DataManager(Base):
         for i in range(self.number_of_streams):
             dispatcher_id = "{}/{}".format(i, self.number_of_streams)
             proc = multiprocessing.Process(
-                target=DataDispatcher,
+                target=run_datadispatcher,
                 kwargs=dict(
                     dispatcher_id=dispatcher_id,
                     endpoints=self.endpoints,
@@ -924,11 +928,11 @@ class DataManager(Base):
 
             time.sleep(1)
 
-            run_loop = (self.continue_run
+            run_loop = (not self.stop_request.is_set()
                         and self.core_parts_status_check())
 
         # notify which subprocess terminated
-        if not self.continue_run:
+        if self.stop_request.is_set():
             self.log.debug("Stopped run loop.")
         else:
             if not self.signalhandler_pr.is_alive():
@@ -1013,7 +1017,7 @@ class DataManager(Base):
         """Close socket and clean up.
         """
 
-        self.continue_run = False
+        self.stop_request.set()
 
         if self.log is None:
             self.log = logging

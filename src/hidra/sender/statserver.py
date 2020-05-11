@@ -65,8 +65,6 @@ class StatServer(Base):
         self.stats_collect_socket = None
         self.stats_expose_socket = None
 
-        self.run()
-
     def _setup(self):
         self.log = utils.get_logger(self.__class__.__name__,
                                     queue=self.log_queue,
@@ -124,6 +122,13 @@ class StatServer(Base):
         """Collect stats from and exposes them.
         """
         self._setup()
+
+        try:
+            self._run()
+        finally:
+            self.stop()
+
+    def _run(self):
 
         while not self.stop_request.is_set():
             socks = dict(self.poller.poll())
@@ -201,8 +206,9 @@ class StatServer(Base):
             self.context.destroy(0)
             self.context = None
 
-    def __exit__(self, exception_type, exception_value, traceback):
-        self.stop()
 
-    def __del__(self):
-        self.stop()
+def run_statserver(**kwargs):
+    """ Wrapper to run in a process or thread"""
+
+    proc = StatServer(**kwargs)
+    proc.run()

@@ -101,6 +101,7 @@ class SignalHandler(Base):
         self.config = config
         self.endpoints = endpoints
         self.stop_request = stop_request
+        self.stopped = None
 
         self.log = None
 
@@ -131,8 +132,6 @@ class SignalHandler(Base):
             "log_queue": log_queue,
             "log_level": log_level
         }
-
-        self.run()
 
     def setup(self):
         """Initializes parameters and creates sockets.
@@ -264,6 +263,7 @@ class SignalHandler(Base):
         self.setup()
 
         try:
+            self.stopped = False
             self._run()
         except zmq.ZMQError:
             self.log.error("Stopping signalHandler due to ZMQError.",
@@ -274,6 +274,7 @@ class SignalHandler(Base):
             self.log.error("Stopping SignalHandler due to unknown error "
                            "condition.", exc_info=True)
         finally:
+            self.stopped = True
             self.stop()
 
     def _run(self):
@@ -1066,6 +1067,7 @@ class SignalHandler(Base):
         super().stop()
 
         self.stop_request.set()
+        self.wait_for_stopped()
 
         self.log.debug("Closing sockets for SignalHandler")
 
@@ -1081,8 +1083,9 @@ class SignalHandler(Base):
             self.context.destroy(0)
             self.context = None
 
-    def __exit__(self, exception_type, exception_value, traceback):
-        self.stop()
 
-    def __del__(self):
-        self.stop()
+def run_signalhandler(**kwargs):
+    """ Wrapper to run in a process or thread"""
+
+    proc = SignalHandler(**kwargs)
+    proc.run()

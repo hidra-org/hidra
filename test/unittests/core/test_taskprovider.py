@@ -49,7 +49,7 @@ except ImportError:
     import pathlib2 as pathlib
 
 from test_base import TestBase, create_dir, MockZmqSocket, MockLogging
-from taskprovider import TaskProvider
+from taskprovider import TaskProvider, run_taskprovider
 import hidra.utils as utils
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
@@ -224,7 +224,7 @@ class TestTaskProvider(TestBase):
 
         with mock.patch(mocked_fct) as mock_get_events:
             mock_get_events.side_effect = [event_message_list]
-            taskprovider_pr = Process(target=TaskProvider, kwargs=kwargs)
+            taskprovider_pr = Process(target=run_taskprovider, kwargs=kwargs)
             taskprovider_pr.start()
 
         # wait till everything is set up
@@ -253,7 +253,7 @@ class TestTaskProvider(TestBase):
             log_level="debug",
             stop_request=stop_request
         )
-        taskprovider_pr = Process(target=TaskProvider, kwargs=kwargs)
+        taskprovider_pr = Process(target=run_taskprovider, kwargs=kwargs)
         taskprovider_pr.start()
 
         request_responder_pr = RequestResponder(self.config, self.log_queue)
@@ -331,8 +331,7 @@ class TestTaskProvider(TestBase):
             stop_request=stop_request
         )
         # the method run contains setup and _run
-        with mock.patch("taskprovider.TaskProvider.run"):
-            taskprovider = TaskProvider(**kwargs)
+        taskprovider = TaskProvider(**kwargs)
 
         taskprovider.log = MockLogging()
         taskprovider.log.error = mock.MagicMock()

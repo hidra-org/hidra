@@ -46,7 +46,7 @@ from hidra import __version__
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 
-class DataHandler(Base, threading.Thread):
+class DataHandler(Base):
     """
     Reads the data using the configured module type and send it to the targets.
 
@@ -214,9 +214,11 @@ class DataHandler(Base, threading.Thread):
                                    exc_info=True)
                     continue
 
+                metadata = json.loads(message[0].decode("utf-8"))
+
+                # add fixed streaming address to targets
                 if len(message) >= 2:
 
-                    metadata = json.loads(message[0].decode("utf-8"))
                     targets = json.loads(message[1].decode("utf-8"))
 
                     if self.fixed_stream_addr:
@@ -228,8 +230,6 @@ class DataHandler(Base, threading.Thread):
                     targets = sorted(targets, key=lambda target: target[1])
 
                 else:
-                    metadata = json.loads(message[0].decode("utf-8"))
-
                     if (isinstance(metadata, list)
                             and metadata[0] == b"CLOSE_FILE"):
 
@@ -450,8 +450,6 @@ class DataDispatcher(Base):
         self.datahandler = None
         self.stopped = None
 
-        self.run()
-
     def _setup(self):
         """Initializes parameters and creates sockets.
         """
@@ -480,15 +478,18 @@ class DataDispatcher(Base):
             self.log.error("Cannot create sockets", ext_info=True)
             self.stop()
 
-        self.datahandler = DataHandler(
-            dispatcher_id=self.dispatcher_id,
-            endpoints=self.endpoints,
-            fixed_stream_addr=self.fixed_stream_addr,
-            config=self.config,
-            log_queue=self.log_queue,
-            log_level=self.log_level,
-            context=self.context,
-            stop_request=self.stop_request
+        self.datahandler = threading.Thread(
+            target=run_datahandler,
+            kwargs=dict(
+                dispatcher_id=self.dispatcher_id,
+                endpoints=self.endpoints,
+                fixed_stream_addr=self.fixed_stream_addr,
+                config=self.config,
+                log_queue=self.log_queue,
+                log_level=self.log_level,
+                context=self.context,
+                stop_request=self.stop_request
+            )
         )
         self.datahandler.start()
 
@@ -594,7 +595,6 @@ class DataDispatcher(Base):
         self.stop_socket(name="control_socket")
 
         if self.datahandler is not None:
-            self.datahandler.stop()
             self.log.debug("Waiting for datahandler to join.")
             self.datahandler.join()
             self.log.debug("DataHandler joined.")
@@ -623,3 +623,17 @@ class DataDispatcher(Base):
         """Stop the class and request the data handler to stop as well.
         """
         self.stop_request.set()
+
+
+def run_datahandler(**kwargs):
+    """ Wrapper to run in a process or thread"""
+
+    proc = DataHandler(**kwargs)
+    proc.run()
+
+
+def run_datadispatcher(**kwargs):
+    """ Wrapper to run in a process or thread"""
+
+    proc = DataDispatcher(**kwargs)
+    proc.run()

@@ -61,6 +61,7 @@ from test_base import (
 )
 from signalhandler import (
     SignalHandler,
+    run_signalhandler,
     UnpackedMessage,
     TargetProperties
 )
@@ -232,7 +233,7 @@ class TestSignalHandler(TestBase):
         )
 
         self.signalhandler_config["context"] = None
-        signalhandler_thr = threading.Thread(target=SignalHandler,
+        signalhandler_thr = threading.Thread(target=run_signalhandler,
                                              kwargs=self.signalhandler_config)
         signalhandler_thr.start()
 
@@ -328,10 +329,7 @@ class TestSignalHandler(TestBase):
 
         current_func_name = inspect.currentframe().f_code.co_name
 
-        with mock.patch("signalhandler.SignalHandler.setup"):
-            with mock.patch("signalhandler.SignalHandler.run"):
-                sighandler = SignalHandler(**self.signalhandler_config)
-
+        sighandler = SignalHandler(**self.signalhandler_config)
         conf = self.signalhandler_config
 
         # --------------------------------------------------------------------
@@ -357,9 +355,10 @@ class TestSignalHandler(TestBase):
         current_func_name = inspect.currentframe().f_code.co_name
 
         def init(config):
+            handler = SignalHandler(**config)
             with mock.patch("signalhandler.SignalHandler.create_sockets"):
                 with mock.patch("signalhandler.SignalHandler._run"):
-                    handler = SignalHandler(**config)
+                    handler.run()
 
             handler.log = mock.MagicMock()
 
@@ -434,9 +433,10 @@ class TestSignalHandler(TestBase):
         current_func_name = inspect.currentframe().f_code.co_name
 
         # with all nodes allowed to connect
+        sighandler = SignalHandler(**self.signalhandler_config)
         with mock.patch("signalhandler.SignalHandler.create_sockets"):
             with mock.patch("signalhandler.SignalHandler.run"):
-                sighandler = SignalHandler(**self.signalhandler_config)
+                sighandler.run()
 
         sighandler.com_socket = mock.MagicMock()
         sighandler.request_socket = mock.MagicMock()
@@ -971,9 +971,10 @@ class TestSignalHandler(TestBase):
 
         # with all nodes allowed to connect
         self.signalhandler_config["whitelist"] = None
+        sighandler = SignalHandler(**self.signalhandler_config)
         with mock.patch("signalhandler.SignalHandler.setup"):
             with mock.patch("signalhandler.SignalHandler.run"):
-                sighandler = SignalHandler(**self.signalhandler_config)
+                sighandler.run()
 
         sighandler.log = MockLogging()
 
@@ -1080,9 +1081,10 @@ class TestSignalHandler(TestBase):
 
         # with no nodes allowed to connect
         self.signalhandler_config["whitelist"] = []
+        sighandler = SignalHandler(**self.signalhandler_config)
         with mock.patch("signalhandler.SignalHandler.create_sockets"):
             with mock.patch("signalhandler.SignalHandler._run"):
-                sighandler = SignalHandler(**self.signalhandler_config)
+                sighandler.run()
 
         sighandler.log = MockLogging()
 
@@ -1105,9 +1107,10 @@ class TestSignalHandler(TestBase):
     def test_send_response(self):
         current_func_name = inspect.currentframe().f_code.co_name
 
+        sighandler = SignalHandler(**self.signalhandler_config)
         with mock.patch("signalhandler.SignalHandler.create_sockets"):
             with mock.patch("signalhandler.SignalHandler._run"):
-                sighandler = SignalHandler(**self.signalhandler_config)
+                sighandler.run()
 
         sighandler.com_socket = mock.MagicMock(
             spec_set=zmq.sugar.socket.Socket
@@ -1150,9 +1153,10 @@ class TestSignalHandler(TestBase):
     def test__start_signal(self):
         current_func_name = inspect.currentframe().f_code.co_name
 
+        sighandler = SignalHandler(**self.signalhandler_config)
         with mock.patch("signalhandler.SignalHandler.create_sockets"):
             with mock.patch("signalhandler.SignalHandler._run"):
-                sighandler = SignalHandler(**self.signalhandler_config)
+                sighandler.run()
 
         sighandler.send_response = mock.MagicMock()
 
@@ -1526,9 +1530,10 @@ class TestSignalHandler(TestBase):
     def test__stop_signal(self):
         current_func_name = inspect.currentframe().f_code.co_name
 
+        sighandler = SignalHandler(**self.signalhandler_config)
         with mock.patch("signalhandler.SignalHandler.create_sockets"):
             with mock.patch("signalhandler.SignalHandler._run"):
-                sighandler = SignalHandler(**self.signalhandler_config)
+                sighandler.run()
 
         sighandler.send_response = mock.MagicMock()
         sighandler.control_pub_socket = mock.MagicMock(
@@ -1809,9 +1814,10 @@ class TestSignalHandler(TestBase):
     def test_react_to_signal(self):
         current_func_name = inspect.currentframe().f_code.co_name
 
+        sighandler = SignalHandler(**self.signalhandler_config)
         with mock.patch("signalhandler.SignalHandler.create_sockets"):
             with mock.patch("signalhandler.SignalHandler._run"):
-                sighandler = SignalHandler(**self.signalhandler_config)
+                sighandler.run()
 
         sighandler.send_response = mock.MagicMock()
         sighandler._start_signal = mock.MagicMock()
@@ -1893,9 +1899,10 @@ class TestSignalHandler(TestBase):
         # resetting QueueHandlers
         sighandler.log.handlers = []
 
+        sighandler = SignalHandler(**config)
         with mock.patch("signalhandler.SignalHandler.create_sockets"):
             with mock.patch("signalhandler.SignalHandler._run"):
-                sighandler = SignalHandler(**config)
+                sighandler.run()
 
         sighandler.send_response = mock.MagicMock()
         sighandler._start_signal = mock.MagicMock()
@@ -1931,9 +1938,10 @@ class TestSignalHandler(TestBase):
         # resetting QueueHandlers
         sighandler.log.handlers = []
 
+        sighandler = SignalHandler(**config)
         with mock.patch("signalhandler.SignalHandler.create_sockets"):
             with mock.patch("signalhandler.SignalHandler._run"):
-                sighandler = SignalHandler(**config)
+                sighandler.run()
 
         sighandler.send_response = mock.MagicMock()
         sighandler._start_signal = mock.MagicMock()
@@ -2033,9 +2041,10 @@ class TestSignalHandler(TestBase):
         # resetting QueueHandlers
         sighandler.log.handlers = []
 
+        sighandler = SignalHandler(**config)
         with mock.patch("signalhandler.SignalHandler.create_sockets"):
             with mock.patch("signalhandler.SignalHandler._run"):
-                sighandler = SignalHandler(**config)
+                sighandler.run()
 
         sighandler.send_response = mock.MagicMock()
         sighandler._start_signal = mock.MagicMock()
@@ -2071,9 +2080,10 @@ class TestSignalHandler(TestBase):
         # resetting QueueHandlers
         sighandler.log.handlers = []
 
+        sighandler = SignalHandler(**config)
         with mock.patch("signalhandler.SignalHandler.create_sockets"):
             with mock.patch("signalhandler.SignalHandler._run"):
-                sighandler = SignalHandler(**config)
+                sighandler.run()
 
         sighandler.send_response = mock.MagicMock()
         sighandler._start_signal = mock.MagicMock()
@@ -2149,9 +2159,10 @@ class TestSignalHandler(TestBase):
 
         self.signalhandler_config["context"] = self.context
 
+        sighandler = SignalHandler(**self.signalhandler_config)
         with mock.patch("signalhandler.SignalHandler.create_sockets"):
             with mock.patch("signalhandler.SignalHandler._run"):
-                sighandler = SignalHandler(**self.signalhandler_config)
+                sighandler.run()
         sighandler.stop_socket = mock.MagicMock()
 
         sighandler.stop()
@@ -2176,9 +2187,10 @@ class TestSignalHandler(TestBase):
         self.log.info("%s: NO EXTERNAL CONTEXT", current_func_name)
 
         self.signalhandler_config["context"] = None
+        sighandler = SignalHandler(**self.signalhandler_config)
         with mock.patch("signalhandler.SignalHandler.create_sockets"):
             with mock.patch("signalhandler.SignalHandler._run"):
-                sighandler = SignalHandler(**self.signalhandler_config)
+                sighandler.run()
         sighandler.stop_socket = mock.MagicMock()
 
         sighandler.stop()

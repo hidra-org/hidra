@@ -35,17 +35,12 @@ import json
 import multiprocessing
 import os
 from shutil import copyfile
+import threading
 import time
 import zmq
 
-try:
-    import unittest.mock as mock
-except ImportError:
-    # for python2
-    import mock
-
 from test_base import TestBase, create_dir
-from datadispatcher import DataHandler
+from datadispatcher import DataHandler, run_datahandler
 
 import hidra.utils as utils
 
@@ -121,8 +116,7 @@ class TestDataDispatcher(TestBase):
             stop_request=multiprocessing.Event()
         )
 
-        with mock.patch("threading.Thread"):
-            datahandler = DataHandler(**kwargs)
+        datahandler = DataHandler(**kwargs)
 
         with self.assertRaises(utils.WrongConfiguration):
             datahandler._setup()  # pylint:disable=protected-access
@@ -179,7 +173,8 @@ class TestDataDispatcher(TestBase):
             context=self.context,
             stop_request=stop_request
         )
-        datahandler_thr = DataHandler(**kwargs)
+        datahandler_thr = threading.Thread(target=run_datahandler,
+                                           kwargs=kwargs)
         datahandler_thr.start()
 
         # Set up receiver simulator

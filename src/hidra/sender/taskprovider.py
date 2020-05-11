@@ -81,8 +81,6 @@ class TaskProvider(Base):
         self.stopped = None
         self.ignore_accumulated_events = None
 
-        self.run()
-
     def _setup(self):
         """Initializes parameters and creates sockets.
         """
@@ -387,8 +385,9 @@ class TaskProvider(Base):
         # By setting stop_request explicitly the main loop is given the
         # possibility to stop by itself
 
-    def __exit__(self, exception_type, exception_value, traceback):
-        self.stop()
 
-    def __del__(self):
-        self.stop()
+def run_taskprovider(**kwargs):
+    """ Wrapper to run in a process or thread"""
+
+    proc = TaskProvider(**kwargs)
+    proc.run()
