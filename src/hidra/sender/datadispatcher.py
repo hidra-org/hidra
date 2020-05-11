@@ -49,6 +49,9 @@ __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 class DataHandler(Base, threading.Thread):
     """
     Reads the data using the configured module type and send it to the targets.
+
+    This is separated from DataDispatcher to be able to react to exit signals
+    while instide the data fetcher methods.
     """
     def __init__(self,
                  dispatcher_id,
@@ -76,7 +79,6 @@ class DataHandler(Base, threading.Thread):
 
         self.log = None
         self.datafetcher = None
-        self.keep_running = True
         self.open_connections = None
         self.control_signal = None
 
@@ -188,7 +190,7 @@ class DataHandler(Base, threading.Thread):
 
         fixed_stream_addr = [self.fixed_stream_addr, 0, "data"]
 
-        while self.keep_running:
+        while not self.stop_request.is_set():
             self.log.debug("Waiting for new job")
             try:
                 socks = dict(self.poller.poll())
@@ -231,57 +233,7 @@ class DataHandler(Base, threading.Thread):
                     if (isinstance(metadata, list)
                             and metadata[0] == b"CLOSE_FILE"):
 
-                        # workaround for error
-                        # "TypeError: Frame 0 (u'CLOSE_FILE') does not support
-                        # the buffer interface."
-                        metadata[0] = b"CLOSE_FILE"
-                        for i in range(1, len(metadata)):
-                            metadata[i] = (
-                                json.dumps(metadata[i]).encode("utf-8")
-                            )
-
-                        if not self.fixed_stream_addr:
-                            self.log.warning("Router requested to send signal"
-                                             "that file was closed, but no "
-                                             "target specified")
-                            continue
-
-                        self.log.debug("Router requested to send signal that "
-                                       "file was closed.")
-                        metadata.append(self.dispatcher_id.encode("ascii"))
-
-                        # socket not known
-                        if self.fixed_stream_addr not in self.open_connections:
-                            endpt = "tcp://{}".format(self.fixed_stream_addr)
-
-                            # open and register socket
-                            self.open_connections[self.fixed_stream_addr] = (
-                                self.start_socket(
-                                    name="socket",
-                                    sock_type=zmq.PUSH,
-                                    sock_con="connect",
-                                    endpoint=endpt
-                                )
-                            )
-
-                        # send data
-                        sckt = self.open_connections[self.fixed_stream_addr]
-                        tracker = sckt.send_multipart(metadata,
-                                                      copy=False,
-                                                      track=True)
-                        self.log.info("Sending close file signal to '%s' with "
-                                      "priority 0", fixed_stream_addr)
-
-                        # socket not known
-                        if not tracker.done:
-                            self.log.info("Close file signal has not "
-                                          "been sent yet, waiting...")
-                            tracker.wait()
-                            self.log.info("Close file signal has not "
-                                          "been sent yet, waiting...done")
-
-                        time.sleep(2)
-                        self.log.debug("Continue after sleeping")
+                        self._react_to_close_file_message(message)
                         continue
 
                     elif self.fixed_stream_addr:
@@ -337,6 +289,55 @@ class DataHandler(Base, threading.Thread):
                 if self.check_control_signal():
                     break
 
+    def _react_to_close_file_message(self, metadata):
+        """ this is experimental for the nexus receiver """
+
+        # workaround for error
+        # "TypeError: Frame 0 (u'CLOSE_FILE') does not support
+        # the buffer interface."
+        metadata[0] = b"CLOSE_FILE"
+        for i in range(1, len(metadata)):
+            metadata[i] = json.dumps(metadata[i]).encode("utf-8")
+
+        if not self.fixed_stream_addr:
+            self.log.warning("Router requested to send signal that file was "
+                             "closed, but no target specified")
+            return
+
+        self.log.debug("Router requested to send signal that file was closed.")
+        metadata.append(self.dispatcher_id.encode("ascii"))
+
+        # socket not known
+        if self.fixed_stream_addr not in self.open_connections:
+            endpt = "tcp://{}".format(self.fixed_stream_addr)
+
+            # open and register socket
+            self.open_connections[self.fixed_stream_addr] = (
+                self.start_socket(
+                    name="socket",
+                    sock_type=zmq.PUSH,
+                    sock_con="connect",
+                    endpoint=endpt
+                )
+            )
+
+        # send data
+        sckt = self.open_connections[self.fixed_stream_addr]
+        tracker = sckt.send_multipart(metadata, copy=False, track=True)
+        self.log.info("Sending close file signal to '%s' with priority 0",
+                      self.fixed_stream_addr)
+
+        # socket not known
+        if not tracker.done:
+            self.log.info("Close file signal has not been sent yet, "
+                          "waiting...")
+            tracker.wait()
+            self.log.info("Close file signal has not been sent yet, "
+                          "waiting...done")
+
+        time.sleep(2)
+        self.log.debug("Continue after sleeping")
+
     def _react_to_wakeup_signal(self, message):
         """Overwrite the base class reaction method to wakeup signal.
         """
@@ -369,7 +370,7 @@ class DataHandler(Base, threading.Thread):
         Reaction to exit signal from control socket.
         """
         self.log.debug("Requested to shut down.")
-        self.keep_running = False
+        self.stop_request.set()
 
     def _react_to_close_sockets_signal(self, message):
         """Overwrite the base class reaction method to close_socket signal.
@@ -396,7 +397,6 @@ class DataHandler(Base, threading.Thread):
     def stop(self):
         """Stopping, closing sockets and clean up.
         """
-        self.keep_running = False
         self.stop_request.set()
 
     def cleanup(self):
