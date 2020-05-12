@@ -484,6 +484,15 @@ class CheckReceiver(Base):
         self.stop_socket(name="test_socket")
 
 
+# Needs to be defined at the top-level of the module to be picklable. This is
+# needed for multiprocessing spawn to work.
+def run_cleaner(dt_type, conf):
+    """ Wrapper to run in a process or thread"""
+
+    proc = import_module(dt_type).Cleaner(**conf)
+    proc.run()
+
+
 class DataManager(Base):
     """The main class.
     """
@@ -549,6 +558,9 @@ class DataManager(Base):
             config (dict): All the configuration set either via config file or
                            command line parameter.
         """
+
+        multiprocessing.set_start_method('spawn')
+
         self.stop_request = multiprocessing.Event()
 
         self.localhost = "127.0.0.1"
@@ -860,22 +872,18 @@ class DataManager(Base):
         if self.use_cleaner:
             self.log.info("Loading cleaner from data fetcher module: %s",
                           self.config["datafetcher"]["type"])
-            self.cleaner_m = import_module(self.config["datafetcher"]["type"])
-
-            def run_cleaner(**kwargs):
-                """ Wrapper to run in a process or thread"""
-
-                proc = self.cleaner_m.Cleaner(**kwargs)
-                proc.run()
 
             self.cleaner_pr = multiprocessing.Process(
                 target=run_cleaner,
                 kwargs=dict(
-                    config=self.config,
-                    log_queue=self.log_queue,
-                    log_level=self.log_level,
-                    endpoints=self.endpoints,
-                    stop_request=self.stop_request
+                    dt_type=self.config["datafetcher"]["type"],
+                    conf=dict(
+                        config=self.config,
+                        log_queue=self.log_queue,
+                        log_level=self.log_level,
+                        endpoints=self.endpoints,
+                        stop_request=self.stop_request
+                    )
                 )
             )
             self.cleaner_pr.start()
