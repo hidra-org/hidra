@@ -100,10 +100,17 @@ def common_stop(config, log):
         log: log handler
     """
 
-    log.info("Checking for left over files in monitored_dir")
-    dirs = [os.path.join(config["monitored_dir"], d)
-            for d in config["fix_subdirs"]]
-    utils.show_files_in_dir(log, dirs)
+    log.debug("Checking for left over files in monitored_dir")
+
+    remaining_files = utils.get_files_in_dir(
+        dirs=[os.path.join(config["monitored_dir"], d)
+              for d in config["fix_subdirs"]]
+    )
+
+    if remaining_files:
+        log.warning("Left over files in monitored_dir: %s", remaining_files)
+    else:
+        log.info("No left over files in monitored_dir.")
 
 
 class CleanUp(threading.Thread):

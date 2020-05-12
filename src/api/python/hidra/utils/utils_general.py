@@ -439,11 +439,10 @@ def log_user_change(log, user_was_changed, user_info):
                  user_info.pw_name, user_info.pw_uid)
 
 
-def show_files_in_dir(log, dirs):
+def get_files_in_dir(dirs):
     """Checks if a directory is empty or if not, shows all contained files.
 
     Args:
-        log: log handler
         dirs (list): The directories to check.
     """
 
@@ -456,10 +455,7 @@ def show_files_in_dir(log, dirs):
             for f in files
         ]
 
-    if files:
-        log.debug("Files remaining: %s", files)
-    else:
-        log.debug("No files remaining.")
+    return files
 
 
 def get_service_manager(systemd_prefix, service_name):
