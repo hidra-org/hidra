@@ -154,7 +154,7 @@ def get_stream_log_handler(loglevel="debug", datafmt=None, fmt=None):
             fmt = ("[%(asctime)s] > [%(name)s] > "
                    "[%(filename)s:%(lineno)d] %(message)s")
         else:
-            fmt = "[%(asctime)s] > %(message)s"
+            fmt = "[%(asctime)s] > [%(name)s] > %(message)s"
 
     loglvl = convert_str_to_log_level(loglevel)
 
@@ -280,6 +280,7 @@ def get_least_sever_log_level(log_levels):
     Returns:
         least sever log level found
     """
+
     if log_levels and isinstance(log_levels[0], str):
         severity_order = ("debug", "info", "warning", "error", "critical")
     else:
