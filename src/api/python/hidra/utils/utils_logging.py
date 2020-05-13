@@ -30,7 +30,7 @@ from __future__ import (absolute_import,
                         unicode_literals)
 
 # requires dependency on future
-from builtins import super  # pylint: disable=redefined-builtin
+from builtins import super, dict  # pylint: disable=redefined-builtin
 
 import datetime
 import logging
@@ -122,6 +122,126 @@ def convert_str_to_log_level(level):
         The corresponding logging level.
     """
     return getattr(logging, level.upper())
+
+
+def convert_log_level_to_str(level):
+    """
+    Convert log level from a logging type to the corresponding string
+    equivalent.
+
+    Args:
+        level: A string describing the log level to use (lower or upper case is
+            not relevant).
+
+    Return:
+        The corresponding logging level.
+    """
+
+    if level == logging.CRITICAL:
+        log_level = "critical"
+    elif level == logging.ERROR:
+        log_level = "error"
+    elif level == logging.WARNING:
+        log_level = "warning"
+    elif level == logging.INFO:
+        log_level = "info"
+    else:
+        log_level = "debug"
+
+    return log_level
+
+
+class HiDRALogging(object):
+    """ This class sets up different handlers acording to the hidra config. """
+
+    def __init__(self, config):
+
+        self.supported_log_level = ["debug", "info", "warning",
+                                    "error", "critical"]
+
+        self.datefmt = "%Y-%m-%d %H:%M:%S"
+
+        self.handler_conf = {
+            "file": dict(
+                level=logging.INFO,
+                format="[%(asctime)s] [%(module)s:%(funcName)s:%(lineno)d] "
+                       "[%(name)s] [%(levelname)s] %(message)s",
+                handler=logging.StreamHandler(),
+                enabled=True
+            ),
+            "screen": dict(
+                level=logging.INFO,
+                format="[%(asctime)s] > [%(name)s] > %(message)s",
+                handler=None,
+                enabled=False
+            )
+        }
+
+        self._translate_hidra_config(config)
+
+    def _translate_hidra_config(self, config):
+
+        # file handler
+        if config["verbose"]:
+            self.handler_conf["file"]["level"] = logging.DEBUG
+
+        if is_windows():
+            self.handler_conf["file"]["handler"] = logging.FileHandler(
+                filename=config["log_file"], mode='a'
+            )
+        else:
+            self.handler_conf["file"]["handler"] = (
+                logging.handlers.RotatingFileHandler(
+                    filename=config["logfile"],
+                    mode='a',
+                    maxBytes=config["logsize"],
+                    backupCount=5
+                )
+            )
+
+        # screen handler
+        if config["onscreen"] is not None:
+            self._check_log_level_supported(config["onscreen"])
+
+            self.handler_conf["screen"]["enabled"] = True
+            self.handler_conf["screen"]["level"] = (
+                convert_str_to_log_level(config["onscreen"])
+            )
+
+            if config["onscreen"] == "debug":
+                self.handler_conf["format"] = (
+                    "[%(asctime)s] > [%(name)s] > "
+                    "[%(filename)s:%(lineno)d] %(message)s"
+                )
+
+    def _check_log_level_supported(self, level):
+        if level not in self.supported_log_level:
+            logging.error("Logging on Screen: Option %s is not supported.",
+                          level)
+            sys.exit(1)
+
+    def get_handler(self):
+        """ Return all configured log handler """
+
+        ret_handler = []
+
+        for i in self.handler_conf.values():
+            i["handler"].setLevel(i["level"])
+            if i["format"]:
+                formatter = logging.Formatter(datefmt=self.datefmt,
+                                              fmt=i["format"])
+                i["handler"].setFormatter(formatter)
+            ret_handler.append(i["handler"])
+
+        return ret_handler
+
+    def get_least_sever_log_level(self):
+        """ Determines the least sever log level from all configured handlers
+        """
+
+        return get_least_sever_log_level(
+            log_levels=[i["level"] for i in self.handler_conf.values()]
+        )
 
 
 def get_stream_log_handler(loglevel="debug", datafmt=None, fmt=None):
