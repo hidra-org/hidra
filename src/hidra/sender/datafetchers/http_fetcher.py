@@ -434,6 +434,8 @@ class DataFetcher(DataFetcherBase):
                            message_type, self.source_file)
             sending_failed = False
         except Exception:
+            self.log.debug("targets=%s", targets)
+            self.log.debug("open_connections=%s", open_connections)
             self.log.error("Unable to send %smultipart-message for file %s",
                            message_type, self.source_file, exc_info=True)
             sending_failed = True

@@ -243,29 +243,23 @@ class DataFetcherBase(Base, ABC):
         timeout = 1
         self._check_control_signal()
 
+        zmq_options_prio = dict(copy=False, track=True)
+        zmp_options_non_prio = dict(flags=zmq.NOBLOCK)
+
         for target, prio, send_type in targets:
+
+            # socket not known
+            if target not in open_connections:
+                open_connections[target] = self._open_socket(
+                    endpoint="tcp://{}".format(target)
+                )
+
+            message_suffix = ("message part %s from file '%s' to '%s' with "
+                              "priority %s", chunk_number, self.source_file,
+                              target, prio)
 
             # send data to the data stream to store it in the storage system
             if prio == 0:
-                # socket not known
-                if target not in open_connections:
-                    endpoint = "tcp://{}".format(target)
-                    # open socket
-                    try:
-                        # start and register socket
-                        open_connections[target] = self.start_socket(
-                            name="socket",
-                            sock_type=zmq.PUSH,
-                            sock_con="connect",
-                            endpoint=endpoint
-                        )
-                    except Exception:
-                        self.log.debug("Raising DataHandling error",
-                                       exc_info=True)
-                        msg = ("Failed to start socket (connect): '{}'"
-                               .format(endpoint))
-                        raise DataHandlingError(msg)
-
                 # send data
                 try:
                     # retry sending if anything goes wrong
@@ -273,99 +267,117 @@ class DataFetcherBase(Base, ABC):
                     while retry_sending:
                         retry_sending = False
 
-                        if send_type == "data":
-                            tracker = open_connections[target].send_multipart(
-                                payload,
-                                copy=False,
-                                track=True
-                            )
-                            self.log.info("Sending message part %s from file "
-                                          "'%s' to '%s' with priority %s",
-                                          chunk_number, self.source_file,
-                                          target, prio)
+                        tracker = self._send_data(
+                            send_type=send_type,
+                            connection=open_connections[target],
+                            metadata=metadata,
+                            payload=payload,
+                            zmq_options=zmq_options_prio,
+                            message_suffix=message_suffix
+                        )
 
-                        elif send_type == "metadata":
-                            # json.dumps(None) is 'N.'
-                            tracker = open_connections[target].send_multipart(
-                                [json.dumps(metadata).encode("utf-8"),
-                                 json.dumps(None).encode("utf-8")],
-                                copy=False,
-                                track=True
-                            )
-                            self.log.info("Sending metadata of message part "
-                                          "%s from file '%s' to '%s' with "
-                                          "priority %s", chunk_number,
-                                          self.source_file, target, prio)
-                            self.log.debug("metadata=%s", metadata)
-                        else:
-                            self.log.error("send_type %s is not supported",
-                                           send_type)
+                        if tracker is None:
                             continue
 
-                        if not tracker.done:
-                            self.log.debug("Message part %s from file '%s' "
-                                           "has not been sent yet, waiting...",
-                                           chunk_number, self.source_file)
-
-                            while (not tracker.done
-                                   and self.keep_running
-                                   and not self.stop_request.is_set()):
-                                try:
-                                    tracker.wait(timeout)
-                                except zmq.error.NotDone:
-                                    pass
-
-                                # check for control signals set from outside
-                                if self._check_control_signal():
-                                    self.log.info("Retry sending message part "
-                                                  "%s from file '%s'.",
-                                                  chunk_number,
-                                                  self.source_file)
-                                    retry_sending = True
-                                    break
-
-                            if not retry_sending:
-                                self.log.debug("Message part %s from file '%s'"
-                                               " has not been sent yet, "
-                                               "waiting...done",
-                                               chunk_number, self.source_file)
+                        retry_sending = self._check_tracker(
+                            tracker=tracker,
+                            chunk_number=chunk_number,
+                            timeout=timeout
+                        )
 
                 except Exception:
                     self.log.debug("Raising DataHandling error", exc_info=True)
                     raise DataHandlingError(
-                        "Sending (metadata of) message part %s from file '%s' "
-                        "to '%s' with priority %s failed.",
-                        chunk_number, self.source_file, target, prio
+                        "Sending (metadata of) {} failed."
+                        .format(message_suffix[0]), message_suffix[1:]
                     )
 
             else:
-                # socket not known
-                if target not in open_connections:
-                    # start and register socket
-                    open_connections[target] = self.start_socket(
-                        name="socket",
-                        sock_type=zmq.PUSH,
-                        sock_con="connect",
-                        endpoint="tcp://{}".format(target)
+                try:
+                    self._send_data(
+                        send_type=send_type,
+                        connection=open_connections[target],
+                        metadata=metadata,
+                        payload=payload,
+                        zmq_options=zmp_options_non_prio,
+                        message_suffix=message_suffix
                     )
-                # send data
-                if send_type == "data":
-                    open_connections[target].send_multipart(payload,
-                                                            zmq.NOBLOCK)
-                    self.log.info("Sending message part %s from file '%s' to "
-                                  "'%s' with priority %s", chunk_number,
-                                  self.source_file, target, prio)
+                except Exception:
+                    # TODO remember that there was an exception but keep
+                    # sending data to other targets
+                    raise
 
-                elif send_type == "metadata":
-                    open_connections[target].send_multipart(
-                        [json.dumps(metadata).encode("utf-8"),
-                         json.dumps(None).encode("utf-8")],
-                        zmq.NOBLOCK
-                    )
-                    self.log.info("Sending metadata of message part %s from "
-                                  "file '%s' to '%s' with priority %s",
-                                  chunk_number, self.source_file, target, prio)
-                    self.log.debug("metadata=%s", metadata)
+    def _open_socket(self, endpoint):
+        try:
+            # start and register socket
+            return self.start_socket(
+                name="socket",
+                sock_type=zmq.PUSH,
+                sock_con="connect",
+                endpoint=endpoint
+            )
+        except Exception:
+            self.log.debug("Raising DataHandling error",
+                           exc_info=True)
+            msg = ("Failed to start socket (connect): '{}'"
+                   .format(endpoint))
+            raise DataHandlingError(msg)
+
+    def _send_data(self,
+                   send_type,
+                   connection,
+                   metadata,
+                   payload,
+                   zmq_options,
+                   message_suffix):
+
+        if send_type == "data":
+            tracker = connection.send_multipart(payload, **zmq_options)
+            self.log.info("Sending {}".format(message_suffix[0]),
+                          *message_suffix[1:])
+
+        elif send_type == "metadata":
+            # json.dumps(None) is 'N.'
+            send_msg = [json.dumps(metadata).encode("utf-8"),
+                        json.dumps(None).encode("utf-8")]
+            tracker = connection.send_multipart(send_msg, **zmq_options)
+            self.log.info("Sending metadata of {}".format(message_suffix[0]),
+                          *message_suffix[1:])
+            self.log.debug("metadata=%s", metadata)
+        else:
+            self.log.error("send_type %s is not supported", send_type)
+            return
+
+        return tracker
+
+    def _check_tracker(self, tracker, chunk_number, timeout):
+        retry_sending = False
+
+        if not tracker.done:
+            self.log.debug("Message part %s from file '%s' has not been sent "
+                           "yet, waiting...", chunk_number, self.source_file)
+
+            while (not tracker.done
+                   and self.keep_running
+                   and not self.stop_request.is_set()):
+                try:
+                    tracker.wait(timeout)
+                except zmq.error.NotDone:
+                    pass
+
+                # check for control signals set from outside
+                if self._check_control_signal():
+                    self.log.info("Retry sending message part %s from file "
+                                  "'%s'.", chunk_number, self.source_file)
+                    retry_sending = True
+                    return retry_sending
+
+            if not retry_sending:
+                self.log.debug("Message part %s from file '%s' has not been "
+                               "sent yet, waiting...done",
+                               chunk_number, self.source_file)
+
+            return retry_sending
 
     def _check_control_signal(self):
         """Check for control signal and react accordingly.
