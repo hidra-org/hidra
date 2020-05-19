@@ -246,6 +246,8 @@ class DataFetcherBase(Base, ABC):
         zmq_options_prio = dict(copy=False, track=True)
         zmp_options_non_prio = dict(flags=zmq.NOBLOCK)
 
+        sending_failed = False
+
         for target, prio, send_type in targets:
 
             # socket not known
@@ -303,9 +305,17 @@ class DataFetcherBase(Base, ABC):
                         message_suffix=message_suffix
                     )
                 except Exception:
-                    # TODO remember that there was an exception but keep
-                    # sending data to other targets
-                    raise
+                    # remember that there was an exception but keep sending
+                    # to other targets
+                    self.log.error(
+                        "Sending {} failed.".format(message_suffix[0]),
+                        *message_suffix[1:], exc_info=True
+                    )
+                    sending_failed = True
+
+        if sending_failed:
+            raise DataHandlingError("Sending (metadata of) message part "
+                                    "failed for one of the targets.")
 
     def _open_socket(self, endpoint):
         try:
