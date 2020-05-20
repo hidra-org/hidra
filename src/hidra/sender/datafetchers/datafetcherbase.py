@@ -146,7 +146,6 @@ class DataFetcherBase(Base, ABC):
         self.target_file = None
 
         self.control_signal = None
-        self.keep_running = True
 
         self.required_params = []
 
@@ -369,7 +368,6 @@ class DataFetcherBase(Base, ABC):
                            "yet, waiting...", chunk_number, self.source_file)
 
             while (not tracker.done
-                   and self.keep_running
                    and not self.stop_request.is_set()):
                 try:
                     tracker.wait(timeout)
@@ -401,7 +399,7 @@ class DataFetcherBase(Base, ABC):
 
         if self.control_signal[0] == b"EXIT":
             self.log.debug("Received %s signal.", self.control_signal[0])
-            self.keep_running = False
+            self.stop_request.set()
 
         elif self.control_signal[0] == b"CLOSE_SOCKETS":
             # do nothing
@@ -439,7 +437,6 @@ class DataFetcherBase(Base, ABC):
         keep_checking_signal = True
 
         while (keep_checking_signal
-               and self.keep_running
                and not self.stop_request.is_set()):
 
             if self.control_signal[0] == "SLEEP":
@@ -457,7 +454,7 @@ class DataFetcherBase(Base, ABC):
 
             elif self.control_signal[0] == "EXIT":
                 self.log.debug("Received %s signal.", self.control_signal[0])
-                self.keep_running = False
+                self.stop_request.set()
                 keep_checking_signal = False
 
             elif self.control_signal[0] == b"CLOSE_SOCKETS":
@@ -583,8 +580,9 @@ class DataFetcherBase(Base, ABC):
     def stop_base(self):
         """Stop datafetcher run loop and clean up sockets.
         """
+        self.stop_request.set()
+
         self.close_socket()
-        self.keep_running = False
 
     @abc.abstractmethod
     def stop(self):

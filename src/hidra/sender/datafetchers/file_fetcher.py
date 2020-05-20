@@ -95,8 +95,6 @@ class DataFetcher(DataFetcherBase):
 
         self.windows_handle_path = None
 
-        self.keep_running = True
-
         self.required_params = ["fix_subdirs"]
 
         # check that the required_params are set inside of module specific
@@ -230,7 +228,7 @@ class DataFetcher(DataFetcherBase):
         self.log.debug("Passing multipart-message for file '%s'...",
                        self.source_file)
         # sending data divided into chunks
-        while self.keep_running:
+        while not self.stop_request:
 
             # read next chunk from file
             file_content = file_descriptor.read(chunksize)
@@ -554,8 +552,6 @@ class DataFetcher(DataFetcherBase):
     def stop(self):
         """Implementation of the abstract method stop.
         """
-
-        self.keep_running = False
 
         # stop everything started in the base class
         self.stop_base()
