@@ -559,7 +559,9 @@ class DataManager(Base):
                            command line parameter.
         """
 
-        multiprocessing.set_start_method('spawn')
+        if sys.version_info.major >= 3 and sys.version_info.minor >= 4:
+            # only availab since 3.4
+            multiprocessing.set_start_method('spawn')
 
         self.stop_request = multiprocessing.Event()
 
