@@ -32,8 +32,8 @@ from __future__ import unicode_literals
 
 import json
 
-from datafetcherbase import DataFetcherBase, DataHandlingError
-from hidra import generate_filepath
+from datafetcherbase import DataFetcherBase
+from hidra import generate_filepath, DataError
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
@@ -140,7 +140,7 @@ class DataFetcher(DataFetcherBase):
                                      metadata=None,
                                      payload=chunk_payload,
                                      chunk_number=chunk_number)
-            except DataHandlingError:
+            except DataError:
                 self.log.error("Unable to send multipart-message for file "
                                "'%s' (chunk %s)", self.source_file,
                                chunk_number, exc_info=True)

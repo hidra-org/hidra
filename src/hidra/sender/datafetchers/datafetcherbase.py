@@ -61,12 +61,6 @@ else:
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 
-class DataHandlingError(Exception):
-    """An exception class to be used when handling data.
-    """
-    pass
-
-
 class DataFetcherBase(Base, ABC):
     """
     Implementation of the data fetcher base class.
@@ -289,7 +283,7 @@ class DataFetcherBase(Base, ABC):
 
                 except Exception:
                     self.log.debug("Raising DataHandling error", exc_info=True)
-                    raise DataHandlingError(
+                    raise utils.DataError(
                         "Sending (metadata of) {} failed."
                         .format(message_suffix[0]), message_suffix[1:]
                     )
@@ -314,8 +308,8 @@ class DataFetcherBase(Base, ABC):
                     sending_failed = True
 
         if sending_failed:
-            raise DataHandlingError("Sending (metadata of) message part "
-                                    "failed for one of the targets.")
+            raise utils.DataError("Sending (metadata of) message part failed "
+                                  "for one of the targets.")
 
     def _open_socket(self, endpoint):
         try:
@@ -331,7 +325,7 @@ class DataFetcherBase(Base, ABC):
                            exc_info=True)
             msg = ("Failed to start socket (connect): '{}'"
                    .format(endpoint))
-            raise DataHandlingError(msg)
+            raise utils.DataError(msg)
 
     def _send_data(self,
                    send_type,

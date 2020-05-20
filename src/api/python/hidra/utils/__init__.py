@@ -20,7 +20,7 @@
 #     Manuela Kuhn <manuela.kuhn@desy.de>
 #
 
-"""Set up environment.
+"""hidra utils.
 """
 
 from __future__ import absolute_import

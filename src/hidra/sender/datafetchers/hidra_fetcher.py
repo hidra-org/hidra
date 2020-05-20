@@ -35,8 +35,8 @@ from __future__ import unicode_literals
 import json
 import time
 
-from datafetcherbase import DataFetcherBase, DataHandlingError
-from hidra import generate_filepath, Transfer
+from datafetcherbase import DataFetcherBase
+from hidra import generate_filepath, Transfer, DataError
 import hidra.utils as utils
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
@@ -220,7 +220,7 @@ class DataFetcher(DataFetcherBase):
                 payload=chunk_payload,
                 chunk_number=self.metadata_r["chunk_number"]
             )
-        except DataHandlingError:
+        except DataError:
             self.log.error(
                 "Unable to send multipart-message for file '%s' (chunk %s)",
                 self.source_file, self.metadata_r["chunk_number"],
