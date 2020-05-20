@@ -120,6 +120,7 @@ class DataFetcherBase(Base, ABC):
                 "type",
                 "chunksize",
                 "local_target",
+                "use_cleaner",
                 ["remove_data", [True,
                                  False,
                                  "stop_on_error",

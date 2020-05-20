@@ -165,9 +165,6 @@ class DataFetcher(DataFetcherBase):
                 #        }
                 if self.is_windows:
                     # TODO use pathlib here instead
-                    # path conventions is save, see:
-                    # pylint: disable=line-too-long
-                    # http://softwareengineering.stackexchange.com/questions/245156/is-it-safe-to-convert-windows-file-paths-to-unix-file-paths-with-a-simple-replac  # noqa E501
                     metadata["source_path"] = (
                         metadata["source_path"].replace("\\", "/"))
                     metadata["relative_path"] = (
@@ -177,7 +174,8 @@ class DataFetcher(DataFetcherBase):
                 metadata["file_mod_time"] = file_mod_time
                 metadata["file_create_time"] = file_create_time
                 metadata["chunksize"] = self.config_df["chunksize"]
-                if self.config_df["remove_data"] == "with_confirmation":
+                if (self.config_df["use_cleaner"] and
+                        self.config_df["remove_data"] == "with_confirmation"):
                     metadata["confirmation_required"] = (
                         self.confirmation_topic.decode()
                     )
