@@ -36,7 +36,7 @@ import time
 import zmq
 
 from test_base import TestBase
-from statserver import StatServer
+from statserver import run_statserver  # , StatServer
 
 import hidra.utils as utils
 
@@ -96,8 +96,13 @@ class TestStatServer(TestBase):
         stop_request = multiprocessing.Event()
 
         self.server = multiprocessing.Process(
-            target=StatServer,
-            args=(self.statserver_config, self.log_queue, "debug", stop_request)
+            target=run_statserver,
+            kwargs=dict(
+                config=self.statserver_config,
+                log_queue=self.log_queue,
+                log_level="debug",
+                stop_request=stop_request
+            )
         )
         self.server.start()
         time.sleep(0.1)
