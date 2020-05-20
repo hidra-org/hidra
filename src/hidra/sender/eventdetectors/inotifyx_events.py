@@ -71,6 +71,11 @@ import threading
 import inotifyx
 from future.utils import iteritems
 
+try:
+    import pathlib
+except ImportError:
+    import pathlib2 as pathlib
+
 from eventdetectorbase import EventDetectorBase
 from hidra import convert_suffix_list_to_regex
 from inotify_utils import get_event_message, CleanUp, common_stop
@@ -137,7 +142,8 @@ class EventDetector(EventDetectorBase):
                                 "use_cleanup"]
 
         # to keep backwards compatibility to old config files
-        if not self.config_all["general"]["config_file"].suffix == ".conf":
+        suffix = pathlib.Path(self.config_all["general"]["config_file"]).suffix
+        if suffix != ".conf":
             self.required_params.append("event_timeout")
 
         if self.config["use_cleanup"]:

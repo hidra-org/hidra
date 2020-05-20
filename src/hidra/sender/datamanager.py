@@ -122,9 +122,9 @@ def load_config():
     if arguments.config_file is None:
         arguments.config_file = utils.determine_config_file(
             fname_base="datamanager"
-        )
+        ).as_posix()
     else:
-        arguments.config_file = Path(arguments.config_file)
+        arguments.config_file = Path(arguments.config_file).as_posix()
 
     # check if config_file exist
     utils.check_existence(base_config_file)
