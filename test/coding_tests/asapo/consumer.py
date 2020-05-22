@@ -19,8 +19,8 @@ def main():
     token = "KmUDdacgBzaOD3NIJvN1NmKGqWKtx0DK-NyPjdpeWkc="
     group_id = "new"
 #    group_id = "boauublgoakuo175n6e0"
-#    stream = "hidra_test"
-    stream = ""
+    stream = "hidra_test"
+#    stream = ""
 
     broker = asapo_consumer.create_server_broker(
         server_name=source,

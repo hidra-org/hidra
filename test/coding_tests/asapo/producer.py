@@ -20,17 +20,22 @@ def callback(header, err):
     LOCK.release()
 
 
-def get_last_id(**kwargs):
+def get_last_id(broker_args, substream):
     """ get last id stored in the asapo stream """
 
-    broker = asapo_consumer.create_server_broker(**kwargs)
+    broker = asapo_consumer.create_server_broker(**broker_args)
     group_id = broker.generate_group_id()
     try:
-        _, metadata = broker.get_last(group_id, meta_only=True)
+        _, metadata = broker.get_last(
+            group_id=group_id,
+            substream=substream,
+            meta_only=True
+        )
         last_id = metadata["_id"]
-    except asapo_consumer.AsapoEndOfStreamError:
+    except (asapo_consumer.AsapoEndOfStreamError,
+            asapo_consumer.AsapoWrongInputError):
         # stream is empty
-        last_id = 1
+        last_id = 0
 
     return last_id
 
@@ -41,25 +46,29 @@ def main():
     source = "localhost:8400"
     # source = "asapo-services:8400"
     beamtime = "asapo_test"
-    stream = ""
-#    stream = "hidra_test"
+#    stream = ""
+    stream = "hidra_test"
     token = "KmUDdacgBzaOD3NIJvN1NmKGqWKtx0DK-NyPjdpeWkc="
     nthreads = 1
     ingest_mode = asapo_producer.INGEST_MODE_TRANSFER_METADATA_ONLY
+    substream = "substream"
 
     path = "/asapo_shared/asapo/data"
 
     # get id
-#    id = get_last_id(
-    get_last_id(
-        server_name=source,
-        source_path=path,
-        has_filesystem=False,
-        beamtime_id=beamtime,
-        stream=stream,
-        token=token,
-        timeout_ms=1000
+    i = get_last_id(
+        broker_args=dict(
+            server_name=source,
+            source_path=path,
+            has_filesystem=False,
+            beamtime_id=beamtime,
+            stream=stream,
+            token=token,
+            timeout_ms=1000
+        ),
+        substream=substream
     )
+#    i = 0
 
     producer = asapo_producer.create_producer(
         endpoint=source,
@@ -71,13 +80,12 @@ def main():
         timeout_sec=1000
     )
 
-    i = 0
 #    producer.send_data(
 #        id=i + 1,
 #        exposed_path="name" + str(i),
 #        data=None,
 #        ingest_mode=ingest_mode,
-#        substream="substream",
+#        substream=substream,
 #        callback=callback
 #    )
     producer.send_file(
@@ -86,7 +94,7 @@ def main():
         exposed_path=stream + "/test2_file",
         ingest_mode=ingest_mode,
         user_meta='{"test":1}',
-        substream="substream",
+        substream=substream,
         callback=callback
     )
     producer.wait_requests_finished(2000)
