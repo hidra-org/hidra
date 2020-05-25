@@ -29,6 +29,7 @@ datareceiver:
 
 asapo_producer:
     endpoint: string
+    beamline: string
     beamtime: string # optional
     beamtime_file_path: string  # needed if beamtime is not static
     beamtime_file_regex: string  # needed if beamtime is not static
@@ -44,6 +45,7 @@ asapo_producer:
 Example config:
     asapo_producer:
         endpoint: "asapo-services:8400"
+        beamline: "my_beamline"
         beamtime: "asapo_test"
         stream: "hidra_test"
         token: "KmUDdacgBzaOD3NIJvN1NmKGqWKtx0DK-NyPjdpeWkc="
@@ -104,6 +106,8 @@ class Plugin(object):
         self.ignore_regex = None
         self.file_start_index = None
 
+        self.timeout = 1000
+
         self.data_type = None
         self.lock = None
         self.log = None
@@ -117,7 +121,8 @@ class Plugin(object):
             "endpoint",
             "n_threads",
             "ingest_mode",
-            "file_regex"
+            "file_regex",
+            "beamline"
         ]
         self._check_config()
 
@@ -125,6 +130,7 @@ class Plugin(object):
         self.n_threads = self.config["n_threads"]
         self._set_ingest_mode(self.config["ingest_mode"])
         self.file_regex = self.config["file_regex"]
+        self.beamline = self.config["beamline"]
 
         try:
             self.beamtime = self.config["beamtime"]
@@ -200,41 +206,6 @@ class Plugin(object):
             raise utils.NotSupported("Ingest mode '{}' is not supported"
                                      .format(mode))
 
-    def _get_start_file_id(self, stream, beamtime, token):
-        consumer_config = dict(
-            server_name=self.endpoint,
-            source_path="",
-            beamtime_id=beamtime,
-            stream=stream,
-            token=token,
-            timeout_ms=1000
-        )
-        broker = asapo_consumer.create_server_broker(**consumer_config)
-        group_id = broker.generate_group_id()
-        try:
-            data, metadata = broker.get_last(group_id, meta_only=True)
-            last_asapo_id = metadata["_id"]
-            self.log.debug("Continue existing stream (id %s)", last_asapo_id)
-
-            self.log.debug("asapo metadata %s", metadata)
-            _, scan_id, last_file_index = self._parse_file_name(
-                metadata["name"]
-            )
-
-            last_file_index -= self.file_start_index
-
-            # offset is the sum of all files from all previous scans
-            offset = last_asapo_id - last_file_index
-
-            return offset, scan_id, last_file_index
-        except (asapo_consumer.AsapoWrongInputError,
-                asapo_consumer.AsapoEndOfStreamError):
-            self.log.debug("Starting new stream (id 1)")
-            return 0, 0, 0
-        except Exception:
-            self.log.debug("Config for consumer was: %s", consumer_config)
-            raise
-
     def get_data_type(self):
         return self.data_type
 
@@ -246,25 +217,17 @@ class Plugin(object):
         config = dict(
             endpoint=self.endpoint,
             beamtime_id=beamtime,
+            beamline=self.beamline,
             stream=stream,
             token=token,
-            nthreads=self.n_threads
-        )
-        self.log.debug("Create producer with config=%s", config)
+            nthreads=self.n_threads,
+            timeout_sec=self.timeout        )
 
-        offset, current_scan_id, last_file_index = self._get_start_file_id(
-            stream=stream,
-            beamtime=beamtime,
-            token=token
-        )
+        self.log.info("Create producer with config=%s", config)
+
         self.stream_info[stream] = {
             "producer": asapo_producer.create_producer(**config),
-            "offset": offset,
-            "last_file_index": last_file_index,
-            "current_scan_id": current_scan_id
         }
-        self.log.debug("Set stream info for stream %s to %s",
-                       stream, self.stream_info[stream])
 
     def _get_token(self):
         with open(self.token_file, "r") as f:
@@ -297,14 +260,8 @@ class Plugin(object):
     def process(self, local_path, metadata, data=None):
         """Send the file to the ASAP::O producer
 
-        Asapo index calculation explained for incoming files in format
-        (<scan_id, <file_id>):
-        (0,0) -> 1
-        (0,1) -> 2
-        (1,0) -> 3
-        (0,3) -> dropped (old scan)
-        (1,0) -> 3, but asapo is immutable -> dropped
-        (1,1) -> 4
+        Asapo stream and index are chosen by the incoming files in format
+        (<scan_id, <file_id>) -> (substream, id)
 
         Args:
             local_path: The absolute path where the file was written
@@ -326,29 +283,27 @@ class Plugin(object):
         stream_info = self.stream_info[stream]
         producer = stream_info["producer"]
 
+        substream = str(scan_id)
+        self.log.debug("using substream %s", substream)
+
         config = dict(
-            id=self._get_asapo_id(stream_info, scan_id, file_id),
+            id=file_id + 1,  # files start with index 0 and asapo with 1
             exposed_path=self._get_exposed_path(metadata),
             ingest_mode=self.ingest_mode,
             user_meta=json.dumps({"hidra": metadata}),
+            substream=substream,
             callback=self._callback
         )
 
         if self.data_type == "metadata":
             config["local_path"] = local_path
-        elif self.data_type == "data":
-            config["data"] = data
+#        elif self.data_type == "data":
+#            config["data"] = data
         else:
             raise utils.NotSupported("No correct data_type was specified. "
                                      "Was setup method executed?")
 
         producer.send_file(**config)
-
-        # if files did not come in order the current file id might not be the
-        # end of the stream id
-        stream_info["last_file_index"] = max(stream_info["last_file_index"],
-                                             file_id)
-        stream_info["current_scan_id"] = scan_id
 
     @staticmethod
     def _get_exposed_path(metadata):
@@ -367,29 +322,6 @@ class Plugin(object):
             )
 
         return exposed_path
-
-    def _get_asapo_id(self, stream_info, scan_id, file_id):
-        # drop file from old scan to not mess up data of new scan
-        if scan_id < stream_info["current_scan_id"]:
-            self.log.debug("current_scan_id=%s, scan_id=%s",
-                           stream_info["current_scan_id"], scan_id)
-            raise utils.DataError("File belongs to old scan id. Drop it.")
-        # new scan means file_id counting is reset -> offset has to adjusted
-        elif scan_id > stream_info["current_scan_id"]:
-            number_files_in_scan = (stream_info["last_file_index"] + 1
-                                    - self.file_start_index)
-            self.log.debug("Detected new scan, increase offset by %s",
-                           number_files_in_scan)
-
-            # increase by the sum of all files of previous scan
-            stream_info["offset"] += number_files_in_scan
-            stream_info["last_file_index"] = self.file_start_index
-
-        asapo_id = file_id + stream_info["offset"]
-        self.log.debug("asapo_id=%s, file_id=%s, offset=%s",
-                       asapo_id, file_id, stream_info["offset"])
-
-        return asapo_id
 
     def _parse_file_name(self, path):
         # check for ignored files
@@ -435,5 +367,7 @@ class Plugin(object):
         self.lock.release()
 
     def stop(self):
-        for stream, info in iteritems(self.stream_info):
+        """ Clean up """
+
+        for _, info in iteritems(self.stream_info):
             info["producer"].wait_requests_finished(2000)
