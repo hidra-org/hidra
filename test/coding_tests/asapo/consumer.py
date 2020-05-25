@@ -21,6 +21,7 @@ def main():
 #    group_id = "boauublgoakuo175n6e0"
     stream = "hidra_test"
 #    stream = ""
+    substream = "substream"
 
     broker = asapo_consumer.create_server_broker(
         server_name=source,
@@ -40,7 +41,7 @@ def main():
         kwargs = dict(
             group_id=group_id,
             # substream="default",
-            substream="substream",
+            substream=substream,
             meta_only=True
         )
         _, meta = broker.get_last(**kwargs)
