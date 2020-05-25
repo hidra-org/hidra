@@ -228,7 +228,7 @@ class DataFetcher(DataFetcherBase):
         self.log.debug("Passing multipart-message for file '%s'...",
                        self.source_file)
         # sending data divided into chunks
-        while not self.stop_request:
+        while not self.stop_request.is_set():
 
             # read next chunk from file
             file_content = file_descriptor.read(chunksize)
