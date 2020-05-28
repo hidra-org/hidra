@@ -559,8 +559,15 @@ class DataManager(Base):
                            command line parameter.
         """
 
-        if sys.version_info.major >= 3 and sys.version_info.minor >= 4:
+        frozen_not_win = (
+            hasattr(sys, "frozen") and not sys.platform.startswith("win")
+        )
+        if (sys.version_info.major >= 3 and sys.version_info.minor >= 4
+                and not frozen_not_win):
             # only availab since 3.4
+            # and cannot be used for non win systems when freeze3 is used due
+            # to a bug in multiprocessing.freeze_support()
+            # https://bugs.python.org/issue32146
             multiprocessing.set_start_method('spawn')
 
         self.stop_request = multiprocessing.Event()
