@@ -34,7 +34,6 @@ BuildRequires:	python-devel
 BuildRequires:	python-setuptools
 Requires:	python-logutils
 Requires:	python-pathlib
-Requires:	python2-numpy
 Requires:	python-zmq >= 14.5.0
 Requires:	PyYAML
 Requires:	python2-ldap3

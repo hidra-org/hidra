@@ -35,7 +35,6 @@ import subprocess
 import threading
 import time
 
-import numpy as np
 import ldap3
 
 from .utils_datatypes import (
@@ -681,15 +680,3 @@ def stop_socket(name, socket, log):
         socket = None
 
     return socket
-
-
-def zmq_msg_to_nparray(data, array_metadata):
-    """ Deserialize numpy array that where sent via zmq """
-
-    try:
-        mem_view = bytes(memoryview(data))
-        array = np.frombuffer(mem_view, dtype=array_metadata["dtype"])
-    except ValueError:
-        # python 2
-        array = np.frombuffer(bytes(data), dtype=array_metadata["dtype"])
-    return array.reshape(array_metadata["shape"])

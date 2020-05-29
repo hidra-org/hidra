@@ -154,7 +154,7 @@ class DataFetcher(DataFetcherBase):
         # TODO: remove this (for testing)
         try:
             data = [
-                utils.zmq_msg_to_nparray(
+                utils.utils_experimental.zmq_msg_to_nparray(
                     data=msg,
                     array_metadata=metadata["additional_info"][i]
                 )

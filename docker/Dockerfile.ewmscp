@@ -8,7 +8,6 @@ RUN apt update && apt install -y \
     python3-yaml \
     python3-logutils \
     python3-kafka \
-    python3-numpy \
     python3-ldap3
 # ENTRYPOINT ["python3", "/opt/hidra/src/hidra/sender/datamanager.py", "--verbose", "--config_file", "/opt/hidra/conf/datamanager_ewmscp.yaml", "--onscreen", "debug"]
 ENTRYPOINT bash /opt/hidra/docker/set_env_and_run.sh python3 /opt/hidra/src/hidra/sender/datamanager.py --verbose --config_file /opt/hidra/conf/datamanager_ewmscp.yaml --onscreen debug

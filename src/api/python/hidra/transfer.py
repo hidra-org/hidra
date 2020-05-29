@@ -53,6 +53,7 @@ except ImportError:
     from pathlib2 import Path
 
 from .utils._version import __version__
+from . import utils
 from .utils import (
     NotSupported,
     UsageError,
@@ -64,7 +65,6 @@ from .utils import (
     DataSavingError,
     LoggingFunction,
     Base,
-    zmq_msg_to_nparray,
     get_logger
 )
 from .control import Control
@@ -1628,11 +1628,7 @@ class Transfer(Base):
 
                     if ("type" in metadata
                             and metadata["type"] == "numpy_array_list"):
-                        m = metadata["additional_info"]
-                        received["data"] = [
-                            zmq_msg_to_nparray(data=msg, array_metadata=m[i])
-                            for i, msg in enumerate(received["data"])
-                        ]
+                        self._handle_numpy_array(received)
                     # when handling files
                     else:
                         # merge the data again
@@ -1643,6 +1639,26 @@ class Transfer(Base):
                     raise
 
                 return received["metadata"], received["data"]
+
+    def _handle_numpy_array(self, received):
+        """ Loads and converts data to numpy arrays
+
+        This is not part of the standard hidra installation but only used for
+        the experimental sync_lambda part.
+        The data inside the zmq message is converted into a numpy array.
+
+        Args:
+            received: The received metadata and data payload.
+        """
+
+        info = received["metadata"]["additional_info"]
+        received["data"] = [
+            utils.utils_experimental.zmq_msg_to_nparray(
+                data=msg,
+                array_metadata=info[i]
+            )
+            for i, msg in enumerate(received["data"])
+        ]
 
     def store_chunk(self,
                     descriptors,
