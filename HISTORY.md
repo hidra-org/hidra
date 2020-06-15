@@ -1,4 +1,43 @@
 # develop
+
+## Fixes
+- Fix with_confirmation for http_fetcher
+- Fix stopping of http fetcher when handling huge data files
+- Fix memory problems for python3 regarding logging
+- Improve string to logging level convertion
+- Fix log level propagation to processes
+- Fix miscellaneous typos
+- Fix hanging processes on shutdown
+- Use general multiprocessing event to improve stopping
+
+## Improvements and changes
+- Add configuration documentation for modules
+- Improve check and error message if module not found
+- Restructure project
+- Add first version of a setup.py file
+- Enable ldap search on centos6 (dectris) and Windows (switch from ldapsearch to python ldap3)
+- Cache DNS lookup results
+- Enable verbose logging as flag in hidrs.sh
+- Use default Queuelistener of python3
+- Add timestamp to error message of status request
+- Suppress recurring communication warning
+- Reduce log messages in debug mode
+- Improve error message for module loading
+- Improve shutdown message for remaining files
+- Improve error handling for non-prio sending: do not stop serving of other applications if one has problems
+- Improve code readability and clean up code
+- Test on confirmation only if stream is enabled
+- Remove DataHandlingError and exchange it with existing DataError
+
+## New features
+- Integrate plugin support into datareceiver
+- Add option for detector specific config file for control client
+- Support eiger2 filewriter
+- Add possibility to explicitly configure eiger urls
+- IPv6 compatibility
+- Python 3 support
+- ASAPO support (asapo api version 20.03) with and without substreams
+
 # 4.1.8
 
 - Fix memory leak in signalhandler for python2
