@@ -19,9 +19,9 @@ fix_debian_version()
         set_standards_version=3.9.4
     fi
 
-    sed -i -e "s/+deb${default_release}\~fsec) ${DEFAULT_NAME}/+deb${set_package_release}\~fsec) ${DEBIAN_NAME}/g" debian/changelog
-    sed -i -e "s/stretch/${DEBIAN_NAME}/g" debian/changelog
-    sed -i -e "s/Standards-Version: [0-9.]*/Standards-Version: ${set_standards_version}/g" debian/control
+    sed -i -e "s/+deb${default_release}\~fsec) ${DEFAULT_NAME}/+deb${set_package_release}\~fsec) ${DEBIAN_NAME}/g" package/debian/changelog
+    sed -i -e "s/stretch/${DEBIAN_NAME}/g" package/debian/changelog
+    sed -i -e "s/Standards-Version: [0-9.]*/Standards-Version: ${set_standards_version}/g" package/debian/control
 }
 
 check_arguments()
@@ -213,7 +213,7 @@ main()
     fix_debian_version
     tar czf "hidra_${HIDRA_VERSION}.orig.tar.gz" hidra
     # required for the debian pacakge building to work
-    mv debian hidra/debian
+    mv debian hidra/package/debian
 
     build_docker_image
     build_package

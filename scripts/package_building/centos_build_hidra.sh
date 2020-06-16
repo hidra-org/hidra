@@ -104,7 +104,7 @@ download_hidra
 cd hidra || exit 1
 git archive --format tar --prefix="hidra-${HIDRA_VERSION}/" -o "hidra-${HIDRA_VERSION}.tar.gz" "v${HIDRA_VERSION}"
 mv "hidra-${HIDRA_VERSION}.tar.gz" "${MAPPED_DIR}/SOURCES"
-cp hidra.spec "${MAPPED_DIR}/SPECS"
+cp package/hidra.spec "${MAPPED_DIR}/SPECS"
 
 build_docker_image
 build_package
