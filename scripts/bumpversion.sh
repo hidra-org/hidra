@@ -28,17 +28,17 @@ fix_timezone()
     echo "Fix timezone"
     current_time=$(date "+%a, %d %b %Y %H")
     timezone=$(date "+%z")
-    sed -i -e "s/$current_time\(:[0-9][0-9]:[0-9][0-9]\) $/$current_time\1 $timezone/g" debian/changelog
+    sed -i -e "s/$current_time\(:[0-9][0-9]:[0-9][0-9]\) $/$current_time\1 $timezone/g" package/debian/changelog
 }
 
 fix_changelog_entries()
 {
-    changelog_entries=$(grep -c "$current_time\(:[0-9][0-9]:[0-9][0-9]\) $timezone" debian/changelog)
+    changelog_entries=$(grep -c "$current_time\(:[0-9][0-9]:[0-9][0-9]\) $timezone" package/debian/changelog)
     if [ "$changelog_entries" != "1" ]; then
         echo "Fix number of entries in changelog (entries=$changelog_entries)"
         #(?<!^) - ignore the beginning of the file for this regex
         search_regex="(?<!^)hidra .*\n\n.*\n\n.*$current_time.*"
-        perl -i -p0e "s/$search_regex//g" debian/changelog
+        perl -i -p0e "s/$search_regex//g" package/debian/changelog
     fi
 }
 
