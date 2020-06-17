@@ -1,3 +1,3 @@
-opt/hidra/src/hidra_control/client.py
-opt/hidra/src/hidra_control/README.md
+opt/hidra/src/hidra/hidra_control/client.py
+opt/hidra/src/hidra/hidra_control/README.md
 opt/hidra/conf/control_client.yaml

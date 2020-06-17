@@ -66,13 +66,13 @@ mkdir -p %{buildroot}/%{python_sitelib}/%{name}
 cp -r src/api/python/hidra/* %{buildroot}/%{python_sitelib}/%{name}/
 
 # src receiver/sender
-mkdir -p %{buildroot}/opt/%{name}/src
-cp -ra src/hidra/receiver %{buildroot}/opt/%{name}/src/
-cp -ra src/hidra/sender %{buildroot}/opt/%{name}/src/
+mkdir -p %{buildroot}/opt/%{name}/src/hidra
+cp -ra src/hidra/receiver %{buildroot}/opt/%{name}/src/hidra
+cp -ra src/hidra/sender %{buildroot}/opt/%{name}/src/hidra
 
-mkdir -p %{buildroot}/opt/%{name}/src/hidra_control
-cp -a src/hidra/hidra_control/*.py %{buildroot}/opt/%{name}/src/hidra_control/
-rm %{buildroot}/opt/%{name}/src/hidra_control/__init__.py
+mkdir -p %{buildroot}/opt/%{name}/src/hidra/hidra_control
+cp -a src/hidra/hidra_control/*.py %{buildroot}/opt/%{name}/src/hidra/hidra_control/
+rm %{buildroot}/opt/%{name}/src/hidra/hidra_control/__init__.py
 
 # conf
 mkdir -p %{buildroot}/opt/%{name}/conf
@@ -97,12 +97,12 @@ mkdir -p %{buildroot}/var/log/%{name}
 %systemd_postun_with_restart %{name}@.service %{name}-receiver@.service %{name}-control-server@.service
 
 %files
-%attr(0755,root,root) /opt/%{name}/src/receiver/*
-/opt/%{name}/src/sender/*
-%attr(0755,root,root) /opt/%{name}/src/sender/datamanager.py
-/opt/%{name}/src/hidra_control/server.py
-/opt/%{name}/src/hidra_control/server.pyc
-/opt/%{name}/src/hidra_control/server.pyo
+%attr(0755,root,root) /opt/%{name}/src/hidra/receiver/*
+/opt/%{name}/src/hidra/sender/*
+%attr(0755,root,root) /opt/%{name}/src/hidra/sender/datamanager.py
+/opt/%{name}/src/hidra/hidra_control/server.py
+/opt/%{name}/src/hidra/hidra_control/server.pyc
+/opt/%{name}/src/hidra/hidra_control/server.pyo
 %{_unitdir}/*.service
 %config(noreplace) /opt/%{name}/conf/*
 %attr(1777,root,root) /var/log/%{name}
@@ -112,9 +112,9 @@ mkdir -p %{buildroot}/var/log/%{name}
 %{python_sitelib}/*
 
 %files -n hidra-control-client
-/opt/%{name}/src/hidra_control/client.py
-/opt/%{name}/src/hidra_control/client.pyc
-/opt/%{name}/src/hidra_control/client.pyo
+/opt/%{name}/src/hidra/hidra_control/client.py
+/opt/%{name}/src/hidra/hidra_control/client.pyc
+/opt/%{name}/src/hidra/hidra_control/client.pyo
 %config(noreplace) /opt/%{name}/conf/control_client.yaml
 
 %changelog
