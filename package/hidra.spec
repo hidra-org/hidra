@@ -72,6 +72,7 @@ cp -ra src/hidra/sender %{buildroot}/opt/%{name}/src/
 
 mkdir -p %{buildroot}/opt/%{name}/src/hidra_control
 cp -a src/hidra/hidra_control/*.py %{buildroot}/opt/%{name}/src/hidra_control/
+rm %{buildroot}/opt/%{name}/src/hidra_control/__init__.py
 
 # conf
 mkdir -p %{buildroot}/opt/%{name}/conf
