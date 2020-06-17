@@ -99,16 +99,23 @@ def _get_config_file_location(filename):
         NotFoundError when the log file could not be found in either location.
     """
 
-    if not is_windows():
-        # $HOME/.config/hidra/
-        user_config_path = Path.home().joinpath(".config/hidra", filename)
-        if user_config_path.exists():  # pylint: disable=no-member
-            return user_config_path
+    # This needs further discussion if it should be enabled
+    enabled = False
 
-        # /etc/xdg/hidra
-        system_config_path = Path("/etc/xdg/hidra").joinpath(filename)
-        if system_config_path.exists():  # pylint: disable=no-member
-            return system_config_path
+    try:
+        if not is_windows() and enabled:
+            # $HOME/.config/hidra/
+            user_config_path = Path.home().joinpath(".config/hidra", filename)
+            if user_config_path.exists():  # pylint: disable=no-member
+                return user_config_path
+
+            # /etc/xdg/hidra
+            system_config_path = Path("/etc/xdg/hidra").joinpath(filename)
+            if system_config_path.exists():  # pylint: disable=no-member
+                return system_config_path
+    except AttributeError:
+        # if pathlib version is too old (e.g. centos7)
+        pass
 
     # /opt/hidra/conf
     hidra_config_path = get_internal_config_path(filename)
