@@ -51,10 +51,17 @@ from _environment import BASE_DIR  # noqa E402
 try:
     # python3
     from configparser import RawConfigParser
-    from pathlib import Path
 except ImportError:
     # python2
     from ConfigParser import RawConfigParser
+
+# on centos systems the pathlib version for python2 is called
+# pathlib and not pathlib2
+try:
+    # python3 or python2 on centos
+    from pathlib import Path
+except ImportError:
+    # python2
     from pathlib2 import Path
 
 
