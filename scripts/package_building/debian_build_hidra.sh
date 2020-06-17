@@ -5,6 +5,7 @@ DEFAULT_NAME=stretch
 
 fix_debian_version()
 {
+    printf "Fix debian version\n"
     default_release=9u5
 
     # debian 10
@@ -19,9 +20,9 @@ fix_debian_version()
         set_standards_version=3.9.4
     fi
 
-    sed -i -e "s/+deb${default_release}\~fsec) ${DEFAULT_NAME}/+deb${set_package_release}\~fsec) ${DEBIAN_NAME}/g" package/debian/changelog
-    sed -i -e "s/stretch/${DEBIAN_NAME}/g" package/debian/changelog
-    sed -i -e "s/Standards-Version: [0-9.]*/Standards-Version: ${set_standards_version}/g" package/debian/control
+    sed -i -e "s/+deb${default_release}\~fsec) ${DEFAULT_NAME}/+deb${set_package_release}\~fsec) ${DEBIAN_NAME}/g" debian/changelog
+    sed -i -e "s/stretch/${DEBIAN_NAME}/g" debian/changelog
+    sed -i -e "s/Standards-Version: [0-9.]*/Standards-Version: ${set_standards_version}/g" debian/control
 }
 
 check_arguments()
@@ -86,11 +87,13 @@ get_hidra_version()
 download_hidra()
 {
     if [ "$HIDRA_LOCATION" != "" ]; then
-        cp -r "$HIDRA_LOCATION" "$MAPPED_DIR/hidra"
+        printf "Copy hidra from $HIDRA_LOCATION\n"
         # local directory can contain unnecessary data or files
-        rm -r "$MAPPED_DIR"/hidra/data/*
-        rm -r "$MAPPED_DIR"/hidra/virtualenvs/*
-        rm -r "$MAPPED_DIR"/hidra/venv/*
+        rsync -av --quiet "$HIDRA_LOCATION" "$MAPPED_DIR" \
+            --exclude .git \
+            --exclude data \
+            --exclude virtualenvs \
+            --exclude venv
         return
     fi
 
@@ -213,7 +216,7 @@ main()
     fix_debian_version
     tar czf "hidra_${HIDRA_VERSION}.orig.tar.gz" hidra
     # required for the debian pacakge building to work
-    mv debian hidra/package/debian
+    mv debian hidra/debian
 
     build_docker_image
     build_package
