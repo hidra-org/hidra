@@ -20,7 +20,7 @@
 - Enable verbose logging as flag in hidrs.sh
 - Use default Queuelistener of python3
 - Add timestamp to error message of status request
-- Suppress recurring communication warning
+- Suppress reoccurring communication warning
 - Reduce log messages in debug mode
 - Improve error message for module loading
 - Improve shutdown message for remaining files
