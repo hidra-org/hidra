@@ -45,8 +45,12 @@ from .utils_datatypes import (
     NotFoundError
 )
 from .utils_general import is_windows
-# for freeze us the general one not the one from this dir
-from _environment import BASE_DIR  # noqa E402
+try:
+    # for freeze us the general one not the one from this dir
+    from _environment import BASE_DIR  # noqa E402
+except ImportError:
+    BASE_DIR = None
+
 
 try:
     # python3
@@ -77,7 +81,15 @@ def get_internal_config_path(filename):
     Returns:
         A pathlib path object ob the absolute file.
     """
-    return Path(BASE_DIR).joinpath("conf", filename)
+
+    if BASE_DIR is None:
+        # TODO THIS IS A HACK
+        # when packaged this is not the correct path
+        hidra_path = "/opt/hidra"
+
+        return Path(hidra_path).joinpath("conf", filename)
+    else:
+        return Path(BASE_DIR).joinpath("conf", filename)
 
 
 def _get_config_file_location(filename):
