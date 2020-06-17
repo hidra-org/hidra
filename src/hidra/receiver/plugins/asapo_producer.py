@@ -60,16 +60,17 @@ from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
 
-import asapo_producer
-import asapo_consumer
 from builtins import super  # pylint: disable=redefined-builtin
-from future.utils import iteritems
-import hidra.utils as utils
 import json
 import logging
 import os
 import re
 import threading
+
+from future.utils import iteritems
+
+import asapo_producer
+import hidra.utils as utils
 
 try:
     from pathlib import Path
