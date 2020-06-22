@@ -33,7 +33,7 @@ from builtins import super  # pylint: disable=redefined-builtin
 import json
 import os
 
-from datafetcher_template import DataFetcher
+from datafetchers.datafetcher_template import DataFetcher
 from .datafetcher_test_base import DataFetcherTestBase
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
@@ -63,6 +63,7 @@ class TestDataFetcher(DataFetcherTestBase):
                 "chunksize": 10485760,  # = 1024*1024*10 = 10 MiB
                 "local_target": None,
                 "remove_data": False,
+                "use_cleaner": False,
                 self.module_name: {
                 }
             }

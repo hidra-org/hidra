@@ -33,6 +33,7 @@ hidraconfig_static:
         # com_port: 50000
         # request_port: 50001
         # use_statserver: False
+        taskprovider_timeout: None
     eventdetector:
         type: http_events
         # type: inotifyx_events

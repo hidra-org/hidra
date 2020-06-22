@@ -31,16 +31,23 @@ from __future__ import unicode_literals
 from builtins import super  # pylint: disable=redefined-builtin
 
 import json
-from multiprocessing import Process
+import multiprocessing
 import os
 from shutil import copyfile
 import time
 import zmq
 
-from file_fetcher import DataFetcher, Cleaner
+from datafetchers.file_fetcher import DataFetcher, Cleaner
 from .datafetcher_test_base import DataFetcherTestBase
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
+
+
+def run_cleaner(conf):
+    """ Wrapper to run in a process or thread"""
+
+    proc = Cleaner(**conf)
+    proc.run()
 
 
 class TestDataFetcher(DataFetcherTestBase):
@@ -68,6 +75,7 @@ class TestDataFetcher(DataFetcherTestBase):
                 "store_data": False,
                 "remove_data": False,
                 "local_target": local_target,
+                "use_cleaner": False,
                 self.module_name: {
                     "fix_subdirs": ["commissioning", "current", "local"],
                 }
@@ -85,6 +93,8 @@ class TestDataFetcher(DataFetcherTestBase):
         self.datafetcher = None
         self.receiving_sockets = None
         self.control_pub_socket = None
+
+        self.stop_request = multiprocessing.Event()
 
     def test_no_confirmation(self):
         """Simulate file fetching without taking care of confirmation signals.
@@ -148,16 +158,21 @@ class TestDataFetcher(DataFetcherTestBase):
         self.datafetcher = DataFetcher(self.df_base_config)
 
         self.config["remove_data"] = "with_confirmation"
+        self.config["use_cleaner"] = True
         endpoints = self.config["endpoints"]
 
         # Set up cleaner
-        kwargs = dict(
-            config=self.cleaner_config,
-            log_queue=self.log_queue,
-            endpoints=endpoints,
-            context=self.context
+        cleaner_pr = multiprocessing.Process(
+            target=run_cleaner,
+            args=(dict(
+                config=self.cleaner_config,
+                log_level="debug",
+                log_queue=self.log_queue,
+                endpoints=endpoints,
+                stop_request=self.stop_request,
+                context=self.context
+            ),)
         )
-        cleaner_pr = Process(target=Cleaner, kwargs=kwargs)
         cleaner_pr.start()
 
         # Set up receiver simulator
@@ -247,6 +262,8 @@ class TestDataFetcher(DataFetcherTestBase):
 
             # give signal time to arrive
             time.sleep(1)
+
+        self.stop_request.set()
 
         if self.receiving_sockets is not None:
             for i, sckt in enumerate(self.receiving_sockets):

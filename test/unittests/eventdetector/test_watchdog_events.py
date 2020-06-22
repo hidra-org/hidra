@@ -36,7 +36,7 @@ import unittest
 from shutil import copyfile
 
 from test_base import create_dir
-from watchdog_events import EventDetector
+from eventdetectors.watchdog_events import EventDetector
 from .eventdetector_test_base import EventDetectorTestBase
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'

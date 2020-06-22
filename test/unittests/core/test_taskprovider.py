@@ -31,7 +31,7 @@ from __future__ import unicode_literals
 from builtins import super  # pylint: disable=redefined-builtin
 
 import json
-from multiprocessing import Process, freeze_support
+from multiprocessing import Process, freeze_support, Event
 import os
 import time
 import threading
@@ -42,12 +42,14 @@ import zmq
 
 try:
     import unittest.mock as mock
+    import pathlib
 except ImportError:
     # for python2
     import mock
+    import pathlib2 as pathlib
 
 from test_base import TestBase, create_dir, MockZmqSocket, MockLogging
-from taskprovider import TaskProvider
+from taskprovider import TaskProvider, run_taskprovider
 import hidra.utils as utils
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
@@ -173,7 +175,7 @@ class TestTaskProvider(TestBase):
                 }
             },
             "general": {
-                "config_file": "testnotconfig.yaml"
+                "config_file": pathlib.Path("testnotconfig.yaml")
             }
         }
 
@@ -183,6 +185,7 @@ class TestTaskProvider(TestBase):
     def test_taskprovider_terminate(self):
         """Simulate start up with wrong configuration.
         """
+        stop_request = Event()
 
         endpoints = self.config["endpoints"]
         event_message_list = [{
@@ -194,7 +197,9 @@ class TestTaskProvider(TestBase):
         kwargs = dict(
             config=self.taskprovider_config,
             endpoints=endpoints,
-            log_queue=self.log_queue
+            log_queue=self.log_queue,
+            log_level="debug",
+            stop_request=stop_request
         )
 
         mocked_fct = "{}.EventDetector.get_new_event".format(
@@ -219,7 +224,7 @@ class TestTaskProvider(TestBase):
 
         with mock.patch(mocked_fct) as mock_get_events:
             mock_get_events.side_effect = [event_message_list]
-            taskprovider_pr = Process(target=TaskProvider, kwargs=kwargs)
+            taskprovider_pr = Process(target=run_taskprovider, kwargs=kwargs)
             taskprovider_pr.start()
 
         # wait till everything is set up
@@ -238,14 +243,17 @@ class TestTaskProvider(TestBase):
         """Simulate incoming data and check if received events are correct.
         """
 
+        stop_request = Event()
         endpoints = self.config["endpoints"]
 
         kwargs = dict(
             config=self.taskprovider_config,
             endpoints=endpoints,
-            log_queue=self.log_queue
+            log_queue=self.log_queue,
+            log_level="debug",
+            stop_request=stop_request
         )
-        taskprovider_pr = Process(target=TaskProvider, kwargs=kwargs)
+        taskprovider_pr = Process(target=run_taskprovider, kwargs=kwargs)
         taskprovider_pr.start()
 
         request_responder_pr = RequestResponder(self.config, self.log_queue)
@@ -312,21 +320,22 @@ class TestTaskProvider(TestBase):
         """Simulate incoming data and check if received events are correct.
         """
 
+        stop_request = Event()
         endpoints = self.config["endpoints"]
 
         kwargs = dict(
             config=self.taskprovider_config,
             endpoints=endpoints,
-            log_queue=self.log_queue
+            log_queue=self.log_queue,
+            log_level="debug",
+            stop_request=stop_request
         )
         # the method run contains setup and _run
-        with mock.patch("taskprovider.TaskProvider.run"):
-            taskprovider = TaskProvider(**kwargs)
+        taskprovider = TaskProvider(**kwargs)
 
         taskprovider.log = MockLogging()
         taskprovider.log.error = mock.MagicMock()
         taskprovider.eventdetector = mock.MagicMock()
-        taskprovider.keep_running = True
         taskprovider._check_control_socket = mock.MagicMock()
 
         taskprovider.context = self.context

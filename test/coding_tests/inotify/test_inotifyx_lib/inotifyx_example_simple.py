@@ -46,8 +46,9 @@ def _main():
         wd = inotifyx.add_watch(fd, watch_dir)
         wd_to_path[wd] = watch_dir
         print("wd_to_path: ", wd_to_path)
-    except Exception:
+    except Exception as excp:
         print("stopped")
+        print("Exception was", excp)
         os.close(fd)
         sys.exit(1)
 

@@ -41,6 +41,13 @@ from shutil import copyfile
 import sys
 import zmq
 
+try:
+    import pathlib
+except ImportError:
+    # python 2
+    import pathlib2 as pathlib
+
+
 from test_base import TestBase, create_dir
 from datamanager import DataManager
 from hidra import __version__
@@ -49,7 +56,7 @@ __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
 
 class TestDataManager(TestBase):
-    """Specification of tests to be performed for the TaskProvider.
+    """Specification of tests to be performed for the DataManager.
     """
 
     # pylint: disable=too-many-instance-attributes
@@ -114,7 +121,7 @@ class TestDataManager(TestBase):
                 "verbose": False,
                 "whitelist": None,
                 "use_statserver": False,
-                "config_file": "something_not_config.yaml"
+                "config_file": pathlib.Path("something_not_config.yaml")
             },
             "eventdetector": {
                 "type": used_eventdetector,

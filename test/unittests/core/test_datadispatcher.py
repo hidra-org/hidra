@@ -32,20 +32,15 @@ from builtins import super  # pylint: disable=redefined-builtin
 
 import copy
 import json
+import multiprocessing
 import os
 from shutil import copyfile
 import threading
 import time
 import zmq
 
-try:
-    import unittest.mock as mock
-except ImportError:
-    # for python2
-    import mock
-
 from test_base import TestBase, create_dir
-from datadispatcher import DataHandler
+from datadispatcher import DataHandler, run_datahandler
 
 import hidra.utils as utils
 
@@ -82,6 +77,7 @@ class TestDataDispatcher(TestBase):
                 "local_target": self.local_target,
                 "store_data": False,
                 "remove_data": False,
+                "use_cleaner": False,
                 "chunksize": self.chunksize,
                 "file_fetcher": {
                     "fix_subdirs": ["commissioning", "current", "local"],
@@ -115,12 +111,12 @@ class TestDataDispatcher(TestBase):
             fixed_stream_addr=None,
             config=config,
             log_queue=self.log_queue,
+            log_level="debug",
             context=self.context,
-            stop_request=threading.Event()
+            stop_request=multiprocessing.Event()
         )
 
-        with mock.patch("threading.Thread"):
-            datahandler = DataHandler(**kwargs)
+        datahandler = DataHandler(**kwargs)
 
         with self.assertRaises(utils.WrongConfiguration):
             datahandler._setup()  # pylint:disable=protected-access
@@ -165,7 +161,7 @@ class TestDataDispatcher(TestBase):
             endpoint=endpoints.control_sub_bind
         )
 
-        stop_request = threading.Event()
+        stop_request = multiprocessing.Event()
 
         kwargs = dict(
             dispatcher_id=1,
@@ -173,10 +169,12 @@ class TestDataDispatcher(TestBase):
             fixed_stream_addr=fixed_stream_addr,
             config=self.datadispatcher_config,
             log_queue=self.log_queue,
+            log_level="debug",
             context=self.context,
             stop_request=stop_request
         )
-        datahandler_thr = DataHandler(**kwargs)
+        datahandler_thr = threading.Thread(target=run_datahandler,
+                                           kwargs=kwargs)
         datahandler_thr.start()
 
         # Set up receiver simulator

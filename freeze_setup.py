@@ -42,8 +42,8 @@ import zmq
 from cx_Freeze import setup, Executable
 
 BASEPATH = os.path.dirname(os.path.abspath(__file__))
-SENDERPATH = os.path.join(BASEPATH, "src", "sender")
-APIPATH = os.path.join(BASEPATH, "src", "APIs", "hidra")
+SENDERPATH = os.path.join(BASEPATH, "src", "hidra", "sender")
+APIPATH = os.path.join(BASEPATH, "src", "api", "python", "hidra")
 UTILSPATH = os.path.join(APIPATH, "utils")
 CONFPATH = os.path.join(BASEPATH, "conf")
 PYTHON_PATH = os.path.dirname(get_python_lib())
@@ -97,8 +97,9 @@ def get_init():
     """Reuse the init file for installed HiDRA to reduce amount of maintenance
     """
 
-    initscript = os.path.join(BASEPATH, "initscripts", "hidra.sh")
-    exescript = os.path.join(BASEPATH, "initscripts", "hidra_exe.sh")
+    script_dir = os.path.join(BASEPATH, "scripts", "init_scripts")
+    initscript = os.path.join(script_dir, "hidra.sh")
+    exescript = os.path.join(script_dir, "hidra_exe.sh")
     with open(initscript, "r") as f:
         with open(exescript, "w") as f_exe:
             for line in f:
@@ -123,12 +124,10 @@ def get_environment():
     with open(env, "r") as f:
         with open(exe_env, "w") as f_exe:
             for line in f:
-                ref_line = (
-                    "BASE_DIR = os.path.dirname(os.path.dirname(CURRENT_DIR))"
-                    "\n"
-                )
-                if line == ref_line:
+                if line.startswith("BASE_DIR = os.path.dirname"):
                     f_exe.write("BASE_DIR = CURRENT_DIR\n")
+                elif line.startswith("API_DIR = os.path.join"):
+                    f_exe.write("API_DIR = BASE_DIR\n")
                 else:
                     f_exe.write(line)
 
@@ -142,26 +141,45 @@ else:
 
 # Some packages differ in Python 3
 # TODO windows compatible?
-if sys.version_info >= (3, 0):
-    VERSION_SPECIFIC_PACKAGES = ["configparser"]
+if sys.version_info.major >= 3:
+    VERSION_SPECIFIC_PACKAGES = [
+        # "future",  # building with python 3.5 does not include this
+        # otherwise zmq.auth.thread cannot be found:
+        # ImportError: No module named zmq.auth.thread
+        # but if the whole zmq module is added asyncio is missed
+        # ImportError: No module named 'zmq.auth.asyncio'
+        "zmq.auth.thread",
+        # otherwise yaml cannot be found:
+        # ModuleNotFoundError: No module named 'yaml'
+        "yaml",
+        # otherwise ldap3 cannot be found
+        # ModuleNotFoundError: No module named 'ldap3'
+        "ldap3"
+    ]
 else:
     VERSION_SPECIFIC_PACKAGES = [
         "ConfigParser",
-        # otherwise loutils cannot be found
+        # otherwise logutils cannot be found
         # ImportError: No module named logutils.queue
         "logutils",
-        "pathlib2"
+        # otherwise zmq.auth.thread cannot be found:
+        # ImportError: No module named auth.thread
+        "zmq",
+        # otherwise uuid cannot be found:
+        # ImportError: No module named uuid
+        "ldap3",
+        # otherwise yaml cannot be found:
+        # ImportError: No module named yaml
+        "yaml"
     ]
+
 
 # Dependencies are automatically detected, but it might need fine tuning.
 BUILD_EXE_OPTIONS = {
     "packages": (
-        [
-            # otherwise zmq.auth.thread cannot be found:
-            # ImportError: No module named auth.thread
-            "zmq",
-            "yaml",
-        ]
+        # prefer putting packages in VERSION_SPECIFIC_PACKAGES since problems
+        # might be fixed with new cx-Freeze versions
+        []
         + VERSION_SPECIFIC_PACKAGES
         + PLATFORM_SPECIFIC_PACKAGES
     ),
@@ -181,31 +199,9 @@ BUILD_EXE_OPTIONS = {
         # only for readability (not for actual code)
         (os.path.join(UTILSPATH, "_version.py"), "_version.py"),
         # event detectors
-        (os.path.join(SENDERPATH, "eventdetectors", "eventdetectorbase.py"),
-         os.path.join("eventdetectors", "eventdetectorbase.py")),
-        (os.path.join(SENDERPATH, "eventdetectors", "inotifyx_events.py"),
-         os.path.join("eventdetectors", "inotifyx_events.py")),
-        (os.path.join(SENDERPATH, "eventdetectors", "inotify_events.py"),
-         os.path.join("eventdetectors", "inotify_events.py")),
-        (os.path.join(SENDERPATH, "eventdetectors", "inotify_utils.py"),
-         os.path.join("eventdetectors", "inotify_utils.py")),
-        (os.path.join(SENDERPATH, "eventdetectors", "watchdog_events.py"),
-         os.path.join("eventdetectors", "watchdog_events.py")),
-        (os.path.join(SENDERPATH, "eventdetectors", "http_events.py"),
-         os.path.join("eventdetectors", "http_events.py")),
-        (os.path.join(SENDERPATH, "eventdetectors", "zmq_events.py"),
-         os.path.join("eventdetectors", "zmq_events.py")),
+        (os.path.join(SENDERPATH, "eventdetectors"), "eventdetectors"),
         # data fetchers
-        (os.path.join(SENDERPATH, "datafetchers", "datafetcherbase.py"),
-         os.path.join("datafetchers", "datafetcherbase.py")),
-        (os.path.join(SENDERPATH, "datafetchers", "file_fetcher.py"),
-         os.path.join("datafetchers", "file_fetcher.py")),
-        (os.path.join(SENDERPATH, "datafetchers", "http_fetcher.py"),
-         os.path.join("datafetchers", "http_fetcher.py")),
-        (os.path.join(SENDERPATH, "datafetchers", "zmq_fetcher.py"),
-         os.path.join("datafetchers", "zmq_fetcher.py")),
-        (os.path.join(SENDERPATH, "datafetchers", "cleanerbase.py"),
-         os.path.join("datafetchers", "cleanerbase.py")),
+        (os.path.join(SENDERPATH, "datafetchers"), "datafetchers"),
         # apis
         (APIPATH, "hidra"),
     ] + PLATFORM_SPECIFIC_FILES,
@@ -225,7 +221,7 @@ EXECUTABLES = [
 ]
 
 setup(name='HiDRA',
-      version='4.1.8',
+      version='4.2.0',
       description='',
       options={"build_exe": BUILD_EXE_OPTIONS,
                "bdist_msi": BDIS_MSI_OPTIONS},

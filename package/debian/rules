@@ -1,0 +1,36 @@
+#!/usr/bin/make -f
+# -*- makefile -*-
+
+# Uncomment this to turn on verbose mode.
+#export DH_VERBOSE=1
+PYDIR = $(shell python -c 'from distutils.sysconfig import get_python_lib; print(get_python_lib())')
+PY3DIR = $(shell python3 -c 'from distutils.sysconfig import get_python_lib; print(get_python_lib())')
+
+override_dh_build:
+
+override_dh_auto_build:
+
+override_dh_auto_install:
+	mkdir -p debian/tmp/$(PYDIR)/hidra
+	mkdir -p debian/tmp/$(PY3DIR)/hidra
+	mkdir -p debian/tmp/opt/hidra/src/hidra
+	mkdir -p debian/tmp/opt/hidra/conf
+	mkdir -p debian/tmp/lib/systemd/system
+	mkdir -p debian/tmp/var/log/hidra
+	chmod 1777 debian/tmp/var/log/hidra
+	cp src/api/python/hidra/*.py  debian/tmp/$(PYDIR)/hidra
+	cp src/api/python/hidra/*.py  debian/tmp/$(PY3DIR)/hidra
+	cp -r src/api/python/hidra/utils  debian/tmp/$(PYDIR)/hidra
+	cp -r src/api/python/hidra/utils  debian/tmp/$(PY3DIR)/hidra
+	cp -r src/hidra/receiver debian/tmp/opt/hidra/src/hidra
+	cp -r src/hidra/sender debian/tmp/opt/hidra/src/hidra
+	cp -r src/hidra/hidra_control debian/tmp/opt/hidra/src/hidra
+	cp -r conf/base_sender.yaml debian/tmp/opt/hidra/conf
+	cp -r conf/datamanager.yaml debian/tmp/opt/hidra/conf
+	cp -r conf/base_receiver.yaml debian/tmp/opt/hidra/conf
+	cp -r conf/datareceiver.yaml debian/tmp/opt/hidra/conf
+	cp -r conf/control_server.yaml debian/tmp/opt/hidra/conf
+	cp -r conf/control_client.yaml debian/tmp/opt/hidra/conf
+	cp scripts/init_scripts/*.service debian/tmp/lib/systemd/system
+%:
+	dh $@ --with python2,python3

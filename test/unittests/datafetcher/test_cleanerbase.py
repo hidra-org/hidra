@@ -32,13 +32,13 @@ from __future__ import unicode_literals
 # requires dependency on future
 from builtins import super  # pylint: disable=redefined-builtin
 
-from multiprocessing import Process
+import multiprocessing
 import os
 import time
 import shutil
 import zmq
 
-from cleanerbase import CleanerBase
+from datafetchers.cleanerbase import CleanerBase
 import hidra.utils as utils
 from .datafetcher_test_base import DataFetcherTestBase
 
@@ -61,6 +61,8 @@ class TestDataFetcher(DataFetcherTestBase):
                 "main_pid": self.config["main_pid"]
             }
         }
+
+        self.stop_request = multiprocessing.Event()
 
     def test_cleaner(self):
         """Simulate a simple cleaner.
@@ -89,15 +91,25 @@ class TestDataFetcher(DataFetcherTestBase):
                     self.log.error("Unable to remove file %s", s_file,
                                    exc_info=True)
 
+        def run_cleaner(conf):
+            """ Wrapper to run in a process or thread"""
+
+            proc = Cleaner(**conf)
+            proc.run()
+
         endpoints = self.config["endpoints"]
 
         # Instantiate cleaner as additional process
-        kwargs = dict(
-            config=self.cleaner_config,
-            log_queue=self.log_queue,
-            endpoints=endpoints
+        cleaner_pr = multiprocessing.Process(
+            target=run_cleaner,
+            args=(dict(
+                config=self.cleaner_config,
+                log_queue=self.log_queue,
+                log_level="debug",
+                endpoints=endpoints,
+                stop_request=self.stop_request
+            ),)
         )
-        cleaner_pr = Process(target=Cleaner, kwargs=kwargs)
         cleaner_pr.start()
 
         # Set up datafetcher simulator
@@ -158,6 +170,8 @@ class TestDataFetcher(DataFetcherTestBase):
         finally:
             self.log.debug("Sending control signal: EXIT")
             control_pub_socket.send_multipart([b"control", b"EXIT"])
+
+            self.stop_request.set()
 
             # give control signal time to be received
             time.sleep(1)

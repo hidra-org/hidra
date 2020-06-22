@@ -30,6 +30,7 @@ from __future__ import unicode_literals
 # requires dependency on future
 from builtins import super  # pylint: disable=redefined-builtin
 
+import copy
 import logging
 import os
 import re
@@ -42,7 +43,7 @@ except ImportError:
     # for python2
     import mock
 
-from inotify_events import EventDetector
+from eventdetectors.inotify_events import EventDetector
 from .eventdetector_test_base import EventDetectorTestBase, create_dir
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
@@ -84,6 +85,8 @@ class TestEventDetector(EventDetectorTestBase):
             "type": self.module_name,
             self.module_name: config_module
         }
+        self.this_ed_path = ("eventdetectors.{}.EventDetector"
+                             .format(self.module_name))
 
         self.start = 100
         self.stop = 110
@@ -121,14 +124,14 @@ class TestEventDetector(EventDetectorTestBase):
             self.ed_base_config["config"]["eventdetector"][self.module_name]
         )
 
-        orig_value = config_module["monitored_events"]
+        orig_value = copy.deepcopy(config_module["monitored_events"])
         config_module["monitored_events"] = {
             "IN_CLOSE_WRITE": [".tif", ".cbf", ".file"],
             "IN_MOVED_TO": [".log"]
         }
 
-        with mock.patch("inotify_events.EventDetector._setup"):
-            with mock.patch("inotify_events.EventDetector.check_config"):
+        with mock.patch("{}._setup".format(self.this_ed_path)):
+            with mock.patch("{}.check_config".format(self.this_ed_path)):
                 with mock.patch("hidra.utils.get_logger"):
                     self.eventdetector = EventDetector(self.ed_base_config)
 
@@ -166,12 +169,12 @@ class TestEventDetector(EventDetectorTestBase):
         orig_value = config_module["use_cleanup"]
         config_module["use_cleanup"] = True
 
-        with mock.patch("inotify_events.EventDetector._setup"):
-            with mock.patch("inotify_events.EventDetector.check_config"):
+        with mock.patch("{}._setup".format(self.this_ed_path)):
+            with mock.patch("{}.check_config".format(self.this_ed_path)):
                 with mock.patch("hidra.utils.get_logger"):
                     self.eventdetector = EventDetector(self.ed_base_config)
 
-        with mock.patch("inotify_events.CleanUp"):
+        with mock.patch("eventdetectors.inotify_events.CleanUp"):
             self.eventdetector._setup()
 
             self.assertIsInstance(self.eventdetector.cleanup_thread,

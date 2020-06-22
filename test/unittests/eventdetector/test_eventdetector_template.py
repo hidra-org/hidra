@@ -30,7 +30,7 @@ from __future__ import unicode_literals
 # requires dependency on future
 from builtins import super  # pylint: disable=redefined-builtin
 
-from eventdetector_template import EventDetector
+from eventdetectors.eventdetector_template import EventDetector
 from .eventdetector_test_base import EventDetectorTestBase
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'

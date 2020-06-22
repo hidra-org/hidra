@@ -35,6 +35,7 @@ try:
 except ImportError:
     # for python2
     import mock
+
 import threading
 import zmq
 

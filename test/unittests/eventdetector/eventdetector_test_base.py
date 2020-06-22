@@ -30,6 +30,13 @@ from __future__ import unicode_literals
 # requires dependency on future
 from builtins import super  # pylint: disable=redefined-builtin
 
+import zmq
+
+try:
+    import pathlib
+except ImportError:
+    import pathlib2 as pathlib
+
 from test_base import TestBase, create_dir  # noqa F401  # pylint: disable=unused-import
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
@@ -44,9 +51,10 @@ class EventDetectorTestBase(TestBase):
         self.ed_base_config = {
             "config": {
                 "general": {
-                    "config_file": "testconfig.yaml"
+                    "config_file": pathlib.Path("testconfig.yaml")
                 }
             },
+            "context": zmq.Context(),
             "log_queue": self.log_queue,
             "check_dep": True
         }
