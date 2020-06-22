@@ -38,6 +38,12 @@ import json
 import logging
 import yaml
 
+try:
+    # for freeze us the general one not the one from this dir
+    from _environment import BASE_DIR  # noqa E402
+except ImportError:
+    BASE_DIR = None
+
 from .utils_datatypes import (
     Endpoints,
     NotSupported,
@@ -45,11 +51,6 @@ from .utils_datatypes import (
     NotFoundError
 )
 from .utils_general import is_windows
-try:
-    # for freeze us the general one not the one from this dir
-    from _environment import BASE_DIR  # noqa E402
-except ImportError:
-    BASE_DIR = None
 
 
 try:
