@@ -24,12 +24,11 @@ Requires:	python-hidra = %{version}
 %description
 HiDRA is a generic tool set for high performance data multiplexing with different qualities of service and is based on Python and ZeroMQ. It can be used to directly store the data in the storage system but also to send it to some kind of online monitoring or analysis framework. Together with OnDA, data can be analyzed with a delay of seconds resulting in an increase of the quality of the generated scientific data by 20 %. The modular architecture of the tool (divided into event detectors, data fetchers and receivers) makes it easily extendible and even gives the possibility to adapt the software to specific detectors directly (for example, Eiger and Lambda detector).
 
-# python libraries
-%package -n python-hidra
+# python2 libraries
+%package -n python2-hidra
 Summary:	High performance data multiplexing tool - Python Library
-
+%{?python_provide:%python_provide python2-hidra}
 BuildArch:	noarch
-
 BuildRequires:	python-devel
 BuildRequires:	python-setuptools
 Requires:	python-logutils
@@ -38,15 +37,29 @@ Requires:	python-zmq >= 14.5.0
 Requires:	PyYAML
 Requires:	python2-ldap3
 
-%description -n python-hidra
+%description -n python2-hidra
+This package contains only the API for developing tools against HiDRA.
+
+# python3 libraries
+%package -n python3-hidra
+Summary:	High performance data multiplexing tool - Python Library
+%{?python_provide:%python_provide python3-hidra}
+BuildArch:	noarch
+BuildRequires:	python3-devel
+BuildRequires:	python3-setuptools
+Requires:	python36-zmq >= 14.5.0
+# centos 7 does not provide general python3 version
+Requires:	python36-PyYAML
+# centos 7 does not provide general python3 version
+Requires:	python36-ldap3
+
+%description -n python3-hidra
 This package contains only the API for developing tools against HiDRA.
 
 # control client
 %package -n hidra-control-client
 Summary:	High performance data multiplexing tool - control client
-
 BuildArch:	noarch
-
 BuildRequires:	python-devel
 BuildRequires:	python-setuptools
 Requires:	python-hidra = %{version}
@@ -63,7 +76,9 @@ This package contains only the client to interact with the control server in the
 %install
 # Packaging Python API
 mkdir -p %{buildroot}/%{python_sitelib}/%{name}
-cp -r src/api/python/hidra/* %{buildroot}/%{python_sitelib}/%{name}/
+cp -r src/api/python/hidra/* %{buildroot}/%{python2_sitelib}/%{name}/
+mkdir -p %{buildroot}/%{python3_sitelib}/%{name}
+cp -r src/api/python/hidra/* %{buildroot}/%{python3_sitelib}/%{name}/
 
 # src receiver/sender
 mkdir -p %{buildroot}/opt/%{name}/src/hidra
@@ -107,9 +122,13 @@ mkdir -p %{buildroot}/var/log/%{name}
 %config(noreplace) /opt/%{name}/conf/*
 %attr(1777,root,root) /var/log/%{name}
 
-%files -n python-hidra
+%files -n python2-hidra
 %doc examples
-%{python_sitelib}/*
+%{python2_sitelib}/*
+
+%files -n python3-hidra
+%doc examples
+%{python3_sitelib}/*
 
 %files -n hidra-control-client
 /opt/%{name}/src/hidra/hidra_control/client.py
@@ -118,6 +137,8 @@ mkdir -p %{buildroot}/var/log/%{name}
 %config(noreplace) /opt/%{name}/conf/control_client.yaml
 
 %changelog
+* Mon Jun 22 2020 Manuela Kuhn <manuela.kuhn@desy.de> - 4.1.8-2
+- Add hidra lib packages for python2 and 3
 * Thu Apr 09 2020 Manuela Kuhn <manuela.kuhn@desy.de> - 4.1.8-1
 - Bump version
 * Wed Apr 01 2020 Manuela Kuhn <manuela.kuhn@desy.de> - 4.1.7-2
