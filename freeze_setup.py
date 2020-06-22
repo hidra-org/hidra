@@ -143,7 +143,7 @@ else:
 # TODO windows compatible?
 if sys.version_info.major >= 3:
     VERSION_SPECIFIC_PACKAGES = [
-        #"future",  # building with python 3.5 does not include this
+        # "future",  # building with python 3.5 does not include this
         # otherwise zmq.auth.thread cannot be found:
         # ImportError: No module named zmq.auth.thread
         # but if the whole zmq module is added asyncio is missed
@@ -221,7 +221,7 @@ EXECUTABLES = [
 ]
 
 setup(name='HiDRA',
-      version='4.1.8',
+      version='4.2.0',
       description='',
       options={"build_exe": BUILD_EXE_OPTIONS,
                "bdist_msi": BDIS_MSI_OPTIONS},

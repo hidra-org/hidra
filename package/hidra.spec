@@ -1,6 +1,6 @@
 Name:		hidra
-Version:	4.1.8
-Release:	1%{?dist}
+Version:	4.2.0
+Release:	2%{?dist}
 Summary:	High performance data multiplexing tool
 
 License:	AGPLv3
@@ -137,8 +137,10 @@ mkdir -p %{buildroot}/var/log/%{name}
 %config(noreplace) /opt/%{name}/conf/control_client.yaml
 
 %changelog
-* Mon Jun 22 2020 Manuela Kuhn <manuela.kuhn@desy.de> - 4.1.8-2
+* Mon Jun 22 2020 Manuela Kuhn <manuela.kuhn@desy.de> - 4.2.0-2
 - Add hidra lib packages for python2 and 3
+* Tue Jun 16 2020 Manuela Kuhn <manuela.kuhn@desy.de> - 4.2.0-1
+- Bump version
 * Thu Apr 09 2020 Manuela Kuhn <manuela.kuhn@desy.de> - 4.1.8-1
 - Bump version
 * Wed Apr 01 2020 Manuela Kuhn <manuela.kuhn@desy.de> - 4.1.7-2

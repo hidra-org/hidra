@@ -1,4 +1,5 @@
 # develop
+# 4.2.0
 
 ## Fixes
 - Fix with_confirmation for http_fetcher

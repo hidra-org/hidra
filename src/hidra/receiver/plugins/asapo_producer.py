@@ -222,7 +222,8 @@ class Plugin(object):
             stream=stream,
             token=token,
             nthreads=self.n_threads,
-            timeout_sec=self.timeout        )
+            timeout_sec=self.timeout
+        )
 
         self.log.info("Create producer with config=%s", config)
 
