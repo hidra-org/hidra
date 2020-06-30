@@ -705,7 +705,7 @@ class SignalHandler(Base):
             # overwrite the old one with it
             # new registration  | registered    | what to done
             # (h:p, h:p2)       |  (h:p)        |  overwrite: (h:p, h:p2)
-            # (h:p              |  (h:p, h:p2)  |  overwrite: (h:p)
+            # (h:p)             |  (h:p, h:p2)  |  overwrite: (h:p)
             # (h:p, h:p2)       |  (h:p, h:p3)  |  ?
 
             # Check if socket_ids is sublist of one entry of registered_ids

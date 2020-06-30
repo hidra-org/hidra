@@ -24,8 +24,6 @@ general:
 eventdetector:
     # Type of event detector to use (options are:
     # inotifyx_events, watchdog_events, zmq_events, http_events)
-    # Inotifyx is not python3 compatible,
-    # see https://bugs.launchpad.net/inotifyx/+bug/1006053
     #type: inotify_events
     type: inotifyx_events
     #type: watchdog_events
