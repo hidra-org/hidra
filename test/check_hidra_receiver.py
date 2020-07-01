@@ -161,11 +161,11 @@ def main():
         test = AliveTest(socket_id, utils.LoggingFunction(None))
 
     if test.run(args.verbose):
-        print("Test successful")
+        print("OK: HiDRA Receiver running.")
         sys.exit(0)
     else:
-        print("Test failed")
-        sys.exit(1)
+        print("CRITICAL: HiDRA Receiver not running!")
+        sys.exit(2)
 
 
 if __name__ == '__main__':
