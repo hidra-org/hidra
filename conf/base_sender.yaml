@@ -7,7 +7,8 @@ general:
     com_port: 50000
 
     # Ldap node and port needed to check whitelist
-    ldapuri: it-ldap-slave.desy.de:1389
+    ldapuri:
+        - it-ldap-slave.desy.de:1389
 
     # ZMQ port to get new requests
     request_port: 50001
