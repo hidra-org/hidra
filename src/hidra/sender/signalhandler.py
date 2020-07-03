@@ -394,7 +394,7 @@ class SignalHandler(Base):
                 request_set = trgt_prop.targets
 
                 if request_set:
-                    # [<host:port>, <prio>, <suffix_list>, <metadata|data>]
+                    # [<host:port>, <prio>, <suffix_regex>, <metadata|data>]
                     socket_id, prio, pattern, send_type = (
                         request_set[self.perm_requests[i]])
 
