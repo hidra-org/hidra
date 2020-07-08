@@ -9,9 +9,16 @@ import ldap3 as ldap
 def main():
     """ Connect to ldap server and resolve netgroup """
 
-    # server = ldap.Server("ldap://it-ldap-slave.desy.de:1389")
-    server = ldap.Server("ldap://it-ldap-slave.desy.de")
-    con = ldap.Connection(server)
+    ldap_servers = [
+        "ldap://it-ldap-slave.desy.de:1389",
+    ]
+
+    servers = []
+    for i in ldap_servers:
+        servers.append(ldap.Server(i))
+
+    servers = ldap.Server("ldap://it-ldap-slave.desy.de")
+    con = ldap.Connection(servers)
     con.open()
     con.search(search_base="",
                search_filter="(cn=a3p00-hosts)",

@@ -1,8 +1,14 @@
+hidra (4.2.1-1+deb9u5~fsec) stretch; urgency=low
+
+  * Bump version
+
+ -- M. Kuhn <manuela.kuhn@desy.de>  Wed, 08 Jul 2020 10:37:19 +0200
 hidra (4.2.0-2+deb9u5~fsec) stretch; urgency=low
 
   * Add hidra lib packages for python2 and 3
 
  -- M. Kuhn <manuela.kuhn@desy.de>  Tue, 22 Jun 2020 21:49:00 +0200
+
 hidra (4.2.0-1+deb9u5~fsec) stretch; urgency=low
 
   * Bump version

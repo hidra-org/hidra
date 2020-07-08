@@ -394,7 +394,7 @@ class SignalHandler(Base):
                 request_set = trgt_prop.targets
 
                 if request_set:
-                    # [<host:port>, <prio>, <suffix_list>, <metadata|data>]
+                    # [<host:port>, <prio>, <suffix_regex>, <metadata|data>]
                     socket_id, prio, pattern, send_type = (
                         request_set[self.perm_requests[i]])
 
@@ -705,7 +705,7 @@ class SignalHandler(Base):
             # overwrite the old one with it
             # new registration  | registered    | what to done
             # (h:p, h:p2)       |  (h:p)        |  overwrite: (h:p, h:p2)
-            # (h:p              |  (h:p, h:p2)  |  overwrite: (h:p)
+            # (h:p)             |  (h:p, h:p2)  |  overwrite: (h:p)
             # (h:p, h:p2)       |  (h:p, h:p3)  |  ?
 
             # Check if socket_ids is sublist of one entry of registered_ids
