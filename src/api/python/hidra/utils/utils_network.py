@@ -29,11 +29,11 @@ from __future__ import (absolute_import,
                         print_function,
                         unicode_literals)
 
-import re
+# import re
 import socket as socket_m
-import subprocess
+# import subprocess
 import threading
-import time
+# import time
 
 import ldap3
 
@@ -141,7 +141,11 @@ def execute_ldapsearch(log, ldap_cn, ldapuri):
 
 def _parse_ldap3(ldapuri, ldap_cn, log):
 
-    server = ldap3.Server(ldapuri)
+    if isinstance(ldapuri, str):
+        # to stay backwards compatible in config (<=4.2.0)
+        server = ldap3.Server(ldapuri)
+    else:
+        server = [ldap3.Server(uri) for uri in ldapuri]
     con = ldap3.Connection(server)
     con.open()
     con.search(search_base="",
@@ -163,69 +167,69 @@ def _parse_ldap3(ldapuri, ldap_cn, log):
     return netgroup
 
 
-def _resolve_ldap_server_ip(log, ldapuri):
-    # measure time to identify misconfigured network settings
-    # (e.g. wrong resolve.conf)
-    t_start = time.time()
-    try:
-        ldap_host = ldapuri.split(":")[0]
-    except Exception:
-        log.error("Failed to identify ldap host", exc_info=True)
-        return None, None
+# def _resolve_ldap_server_ip(log, ldapuri):
+#    # measure time to identify misconfigured network settings
+#    # (e.g. wrong resolve.conf)
+#    t_start = time.time()
+#    try:
+#        ldap_host = ldapuri.split(":")[0]
+#    except Exception:
+#        log.error("Failed to identify ldap host", exc_info=True)
+#        return None, None
+#
+#    try:
+#        ldap_server_ip = socket_m.gethostbyname(ldap_host)
+#    except Exception:
+#        log.error("Failed to look up ldap ip", exc_info=True)
+#        return None, None
+#
+#    ldap_response_limit = 9  # in sec
+#    if time.time() - t_start > ldap_response_limit:
+#        log.warning("Hostname resolution took quite long (longer that %s "
+#                    "sec). This can result in problems with connecting "
+#                    "services", ldap_response_limit)
+#
+#    return ldap_server_ip, ldap_host
 
-    try:
-        ldap_server_ip = socket_m.gethostbyname(ldap_host)
-    except Exception:
-        log.error("Failed to look up ldap ip", exc_info=True)
-        return None, None
 
-    ldap_response_limit = 9  # in sec
-    if time.time() - t_start > ldap_response_limit:
-        log.warning("Hostname resolution took quite long (longer that %s "
-                    "sec). This can result in problems with connecting "
-                    "services", ldap_response_limit)
-
-    return ldap_server_ip, ldap_host
-
-
-def _parse_ldapsearch(ldapuri, ldap_cn, log):
-    # not working on windows and dectris centos 6
-
-    # if there were problems with ldapsearch these information are needed
-    ldap_host, ldap_server_ip = _resolve_ldap_server_ip(log, ldapuri)
-
-    proc = subprocess.Popen(
-        ["ldapsearch",
-         "-x",
-         "-H ldap://" + ldapuri,
-         "cn=" + ldap_cn, "-LLL"],
-        stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-
-    lines = proc.stdout.readlines()
-    error = proc.stderr.read()
-
-    if not lines and not error:
-        log.debug("%s is not a netgroup, considering it as hostname", ldap_cn)
-        return [_get_fqdn(ldap_cn, log)]
-
-    netgroup = []
-    match_host = re.compile(r'nisNetgroupTriple: [(]([\w|\S|.]+),.*,[)]',
-                            re.M | re.I)
-    for line in lines:
-        line = line.decode()  # for python3 compatibility
-        if match_host.match(line):
-            if match_host.match(line).group(1) not in netgroup:
-                netgroup.append(
-                    _get_fqdn(match_host.match(line).group(1), log)
-                )
-
-    if error or not netgroup:
-        log.error("Problem when using ldapsearch.")
-        log.debug("stderr=%s", error)
-        log.debug("stdout=%s", "".join(lines))
-        log.debug("%s has the IP %s", ldap_host, ldap_server_ip)
-
-    return netgroup
+# def _parse_ldapsearch(ldapuri, ldap_cn, log):
+#    # not working on windows and dectris centos 6
+#
+#    # if there were problems with ldapsearch these information are needed
+#    ldap_host, ldap_server_ip = _resolve_ldap_server_ip(log, ldapuri)
+#
+#    proc = subprocess.Popen(
+#        ["ldapsearch",
+#         "-x",
+#         "-H ldap://" + ldapuri,
+#         "cn=" + ldap_cn, "-LLL"],
+#        stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+#
+#    lines = proc.stdout.readlines()
+#    error = proc.stderr.read()
+#
+#    if not lines and not error:
+#        log.debug("%s is not a netgroup, considering it as hostname", ldap_cn)
+#        return [_get_fqdn(ldap_cn, log)]
+#
+#    netgroup = []
+#    match_host = re.compile(r'nisNetgroupTriple: [(]([\w|\S|.]+),.*,[)]',
+#                            re.M | re.I)
+#    for line in lines:
+#        line = line.decode()  # for python3 compatibility
+#        if match_host.match(line):
+#            if match_host.match(line).group(1) not in netgroup:
+#                netgroup.append(
+#                    _get_fqdn(match_host.match(line).group(1), log)
+#                )
+#
+#    if error or not netgroup:
+#        log.error("Problem when using ldapsearch.")
+#        log.debug("stderr=%s", error)
+#        log.debug("stdout=%s", "".join(lines))
+#        log.debug("%s has the IP %s", ldap_host, ldap_server_ip)
+#
+#    return netgroup
 
 
 def extend_whitelist(whitelist, ldapuri, log):

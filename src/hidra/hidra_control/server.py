@@ -636,7 +636,7 @@ class HidraServiceHandling(object):
         # Needed because status always returns "RUNNING" in the first
         # second
         # TODO exchange that with proper communication to statserver
-        time.sleep(2)
+        time.sleep(10)
 
         # the return value might still be 0 even if start did not work
         # -> check status again

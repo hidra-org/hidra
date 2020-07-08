@@ -1,4 +1,11 @@
 # develop
+# 4.2.1
+
+- Increase wait time for control server to avoid acquiring incomplete configurations
+- Add support for multiple ldap server
+- Fix receiver checking scrip for newer zmq versions and improve Error messages
+- Fix dockerfile for centos package building
+
 # 4.2.0
 
 ## Fixes

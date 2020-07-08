@@ -486,10 +486,10 @@ class CheckReceiver(Base):
 
 # Needs to be defined at the top-level of the module to be picklable. This is
 # needed for multiprocessing spawn to work.
-def run_cleaner(dt_type, conf):
+def run_cleaner(df_type, conf):
     """ Wrapper to run in a process or thread"""
 
-    proc = import_module(dt_type).Cleaner(**conf)
+    proc = import_module(df_type).Cleaner(**conf)
     proc.run()
 
 
@@ -885,7 +885,7 @@ class DataManager(Base):
             self.cleaner_pr = multiprocessing.Process(
                 target=run_cleaner,
                 kwargs=dict(
-                    dt_type=self.config["datafetcher"]["type"],
+                    df_type=self.config["datafetcher"]["type"],
                     conf=dict(
                         config=self.config,
                         log_queue=self.log_queue,
