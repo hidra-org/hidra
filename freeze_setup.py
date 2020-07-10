@@ -147,6 +147,8 @@ def linux_specific():
 # the packages that are problematic on all platforms (windows and linux)
 # but depending on the python version used
 def get_python3_specific():
+    """ Collect all python3 specific packages that are missed by cx-Freeze """
+
     packages = [
         # "future",  # building with python 3.5 does not include this
         # otherwise zmq.auth.thread cannot be found:
@@ -166,6 +168,8 @@ def get_python3_specific():
 
 
 def get_python2_specific():
+    """ Collect all python2 specific packages that are missed by cx-Freeze """
+
     packages = [
         "ConfigParser",
         # otherwise logutils cannot be found
