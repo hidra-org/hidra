@@ -484,7 +484,7 @@ class CheckReceiver(Base):
         self.stop_socket(name="test_socket")
 
 
-# Needs to be defined at the top-level of the module to be picklable. This is
+# Needs to be defined at the top-level of the module to be pickable. This is
 # needed for multiprocessing spawn to work.
 def run_cleaner(df_type, conf):
     """ Wrapper to run in a process or thread"""
