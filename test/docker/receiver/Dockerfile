@@ -2,8 +2,8 @@ FROM centos:7
 
 # Setup repos
 RUN yum update -y && yum install -y epel-release \
-    && yum install -y sudo less python-pip \
-    && pip install -U pip && pip install debugpy
+    && yum install -y sudo less python3-pip \
+    && python3 -m pip install -U pip && python3 -m pip install debugpy
 
 # setup systemctl-replacement-script
 COPY systemctl.py /usr/bin/systemctl

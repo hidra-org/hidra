@@ -9,17 +9,16 @@ Source0:	hidra-%{version}.tar.gz
 #Source1:	hidra.service
 
 BuildArch:	noarch
-BuildRequires:	python-devel
-BuildRequires:	python-setuptools
+BuildRequires:	python3-devel
+BuildRequires:	python3-setuptools
 BuildRequires:	systemd-units
 Requires:	systemd
-Requires:	python-zmq >= 14.5.0
-Requires:	python-inotifyx >= 0.2.2
-Requires:	python-requests
-Requires:	python-setproctitle
-Requires:	python-future
-Requires:	python-pathlib
-Requires:	python-hidra = %{version}
+Requires:	python36-zmq >= 14.5.0
+Requires:	python3-inotifyx >= 0.2.2
+Requires:	python36-requests
+Requires:	python36-setproctitle
+Requires:	python36-future
+Requires:	python3-hidra = %{version}
 
 %description
 HiDRA is a generic tool set for high performance data multiplexing with different qualities of service and is based on Python and ZeroMQ. It can be used to directly store the data in the storage system but also to send it to some kind of online monitoring or analysis framework. Together with OnDA, data can be analyzed with a delay of seconds resulting in an increase of the quality of the generated scientific data by 20 %. The modular architecture of the tool (divided into event detectors, data fetchers and receivers) makes it easily extendible and even gives the possibility to adapt the software to specific detectors directly (for example, Eiger and Lambda detector).
@@ -61,9 +60,9 @@ This package contains only the API for developing tools against HiDRA.
 %package -n hidra-control-client
 Summary:	High performance data multiplexing tool - control client
 BuildArch:	noarch
-BuildRequires:	python-devel
-BuildRequires:	python-setuptools
-Requires:	python-hidra = %{version}
+BuildRequires:	python3-devel
+BuildRequires:	python3-setuptools
+Requires:	python3-hidra = %{version}
 
 %description -n hidra-control-client
 This package contains only the client to interact with the control server in the HIDRA package.
@@ -78,6 +77,11 @@ This package contains only the client to interact with the control server in the
 # Packaging Python API
 mkdir -p %{buildroot}/%{python_sitelib}/%{name}
 cp -r src/api/python/hidra/* %{buildroot}/%{python2_sitelib}/%{name}/
+
+# Change shebang to python3
+find src -type f -name '*.py' -exec \
+    sed -i '1s:#!/usr/bin/env python:#!/usr/bin/env python3:' '{}' \;
+
 mkdir -p %{buildroot}/%{python3_sitelib}/%{name}
 cp -r src/api/python/hidra/* %{buildroot}/%{python3_sitelib}/%{name}/
 
