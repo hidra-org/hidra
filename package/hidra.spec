@@ -1,6 +1,6 @@
 Name:		hidra
 Version:	4.2.1
-Release:	2%{?dist}
+Release:	3%{?dist}
 Summary:	High performance data multiplexing tool
 
 License:	AGPLv3
@@ -111,13 +111,20 @@ mkdir -p %{buildroot}/var/log/%{name}
 %systemd_postun_with_restart %{name}@.service %{name}-receiver@.service %{name}-control-server@.service
 
 %files
+%dir /opt/%{name}
+%dir /opt/%{name}/src
+%dir /opt/%{name}/src/hidra
+%dir /opt/%{name}/src/hidra/receiver
 %attr(0755,root,root) /opt/%{name}/src/hidra/receiver/*
+%dir /opt/%{name}/src/hidra/sender
 /opt/%{name}/src/hidra/sender/*
 %attr(0755,root,root) /opt/%{name}/src/hidra/sender/datamanager.py
+%dir /opt/%{name}/src/hidra/hidra_control
 /opt/%{name}/src/hidra/hidra_control/server.py
 /opt/%{name}/src/hidra/hidra_control/server.pyc
 /opt/%{name}/src/hidra/hidra_control/server.pyo
 %{_unitdir}/*.service
+%dir /opt/%{name}/conf
 %config(noreplace) /opt/%{name}/conf/*
 %attr(1777,root,root) /var/log/%{name}
 
@@ -130,12 +137,18 @@ mkdir -p %{buildroot}/var/log/%{name}
 %{python3_sitelib}/*
 
 %files -n hidra-control-client
+%dir /opt/%{name}
+%dir /opt/%{name}/src
+%dir /opt/%{name}/src/hidra
+%dir /opt/%{name}/src/hidra/hidra_control
 /opt/%{name}/src/hidra/hidra_control/client.py
 /opt/%{name}/src/hidra/hidra_control/client.pyc
 /opt/%{name}/src/hidra/hidra_control/client.pyo
 %config(noreplace) /opt/%{name}/conf/control_client.yaml
 
 %changelog
+* Mon Jul 13 2020 Manuela Kuhn <manuela.kuhn@desy.de> - 4.2.1-3
+- Fix directory removal when package is removed
 * Fri Jul 10 2020 Manuela Kuhn <manuela.kuhn@desy.de> - 4.2.1-2
 - Switch hidra and hidra-control-client to python3
 * Wed Jul 08 2020 Manuela Kuhn <manuela.kuhn@desy.de> - 4.2.1-1
