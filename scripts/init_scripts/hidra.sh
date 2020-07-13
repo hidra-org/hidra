@@ -18,7 +18,6 @@ DESC="HiDRA"
 NAME=hidra
 SCRIPT_PROC_NAME=hidra
 IPCDIR=/tmp/hidra
-#PYTHON=/usr/bin/python
 SELF_ZERO="$0"
 test -n "${BASH_VERSION}" && SELF_ZERO="${BASH_SOURCE[0]}" # Fix when bash is used
 CURRENTDIR="$(readlink --canonicalize-existing -- "${SELF_ZERO}")"
