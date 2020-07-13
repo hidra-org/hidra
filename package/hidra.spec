@@ -113,13 +113,20 @@ mkdir -p %{buildroot}/var/log/%{name}
 %systemd_postun_with_restart %{name}@.service %{name}-receiver@.service %{name}-control-server@.service
 
 %files
+%dir /opt/%{name}
+%dir /opt/%{name}/src
+%dir /opt/%{name}/src/hidra
+%dir /opt/%{name}/src/hidra/receiver
 %attr(0755,root,root) /opt/%{name}/src/hidra/receiver/*
+%dir /opt/%{name}/src/hidra/sender
 /opt/%{name}/src/hidra/sender/*
 %attr(0755,root,root) /opt/%{name}/src/hidra/sender/datamanager.py
+%dir /opt/%{name}/src/hidra/hidra_control
 /opt/%{name}/src/hidra/hidra_control/server.py
 /opt/%{name}/src/hidra/hidra_control/server.pyc
 /opt/%{name}/src/hidra/hidra_control/server.pyo
 %{_unitdir}/*.service
+%dir /opt/%{name}/conf
 %config(noreplace) /opt/%{name}/conf/*
 %attr(1777,root,root) /var/log/%{name}
 
@@ -132,6 +139,10 @@ mkdir -p %{buildroot}/var/log/%{name}
 %{python3_sitelib}/*
 
 %files -n hidra-control-client
+%dir /opt/%{name}
+%dir /opt/%{name}/src
+%dir /opt/%{name}/src/hidra
+%dir /opt/%{name}/src/hidra/hidra_control
 /opt/%{name}/src/hidra/hidra_control/client.py
 /opt/%{name}/src/hidra/hidra_control/client.pyc
 /opt/%{name}/src/hidra/hidra_control/client.pyo
