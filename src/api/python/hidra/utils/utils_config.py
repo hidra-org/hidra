@@ -16,12 +16,12 @@
 # You should have received a copy of the GNU General Public License
 # along with this software.  If not, see <http://www.gnu.org/licenses/>.
 #
-# Some of configparser specific parts of this file were former members of
-# cfelpyutils.
+# The _convert_parameters function contained in this file is a variant of a
+# function formerly members of cfelpyutils created by
+# Valerio Mariani <valerio.mariani@desy.de>
 #
 # Authors:
 #     Manuela Kuhn <manuela.kuhn@desy.de>
-#     Valerio Mariani <valerio.mariani@desy.de>
 
 """
 This module provides utilities regarding config handling.
