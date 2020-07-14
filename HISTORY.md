@@ -1,4 +1,5 @@
 # develop
+# 4.3.0
 # 4.2.1
 
 - Increase wait time for control server to avoid acquiring incomplete configurations

@@ -249,7 +249,7 @@ EXECUTABLES = [
 ]
 
 setup(name='HiDRA',
-      version='4.2.1',
+      version='4.3.0',
       description='',
       options={"build_exe": BUILD_EXE_OPTIONS,
                "bdist_msi": BDIS_MSI_OPTIONS},

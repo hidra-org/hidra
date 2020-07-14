@@ -1,6 +1,6 @@
 Name:		hidra
-Version:	4.2.1
-Release:	3%{?dist}
+Version:	4.3.0
+Release:	0%{?dist}
 Summary:	High performance data multiplexing tool
 
 License:	AGPLv3
@@ -147,6 +147,8 @@ mkdir -p %{buildroot}/var/log/%{name}
 %config(noreplace) /opt/%{name}/conf/control_client.yaml
 
 %changelog
+* Tue Jul 14 2020 Manuela Kuhn <manuela.kuhn@desy.de> - 4.3.0-1
+- Bump version
 * Mon Jul 13 2020 Manuela Kuhn <manuela.kuhn@desy.de> - 4.2.1-3
 - Fix directory removal when package is removed
 * Fri Jul 10 2020 Manuela Kuhn <manuela.kuhn@desy.de> - 4.2.1-2
