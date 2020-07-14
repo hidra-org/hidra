@@ -64,35 +64,6 @@ def get_zmq_path():
     return path
 
 
-def windows_specific():
-    """Set Windows specific packages and config
-    """
-    packages = ["watchdog"]
-
-    files = [
-        # config
-        (os.path.join(CONFPATH, "datamanager_windows.yaml"),
-         os.path.join("conf", "datamanager.yaml"))
-    ]
-
-    return packages, files
-
-
-def linux_specific():
-    """Set Linux specific packages and config
-    """
-
-    packages = ["inotifyx"]
-
-    files = [
-        # config
-        (os.path.join(CONFPATH, "datamanager_pilatus.yaml"),
-         os.path.join("conf", "datamanager.yaml"))
-    ]
-
-    return packages, files
-
-
 def get_init():
     """Reuse the init file for installed HiDRA to reduce amount of maintenance
     """
@@ -134,15 +105,51 @@ def get_environment():
     return exe_env
 
 
-if platform.system() == "Windows":
-    PLATFORM_SPECIFIC_PACKAGES, PLATFORM_SPECIFIC_FILES = windows_specific()
-else:
-    PLATFORM_SPECIFIC_PACKAGES, PLATFORM_SPECIFIC_FILES = linux_specific()
+def windows_specific():
+    """Set Windows specific packages and config
+    """
+    packages = ["watchdog"]
 
-# Some packages differ in Python 3
-# TODO windows compatible?
-if sys.version_info.major >= 3:
-    VERSION_SPECIFIC_PACKAGES = [
+    if sys.version_info.major >= 3:
+        # cx_Freeze does not automatically detect these packages when run in
+        # python3
+        packages += [
+            "configparser",
+            "logging.handlers",
+            "future",
+            "zmq.utils.garbage"
+        ]
+
+    files = [
+        # config
+        (os.path.join(CONFPATH, "datamanager_windows.yaml"),
+         os.path.join("conf", "datamanager.yaml"))
+    ]
+
+    return packages, files
+
+
+def linux_specific():
+    """Set Linux specific packages and config
+    """
+
+    packages = ["inotifyx"]
+
+    files = [
+        # config
+        (os.path.join(CONFPATH, "datamanager_pilatus.yaml"),
+         os.path.join("conf", "datamanager.yaml"))
+    ]
+
+    return packages, files
+
+
+# the packages that are problematic on all platforms (windows and linux)
+# but depending on the python version used
+def get_python3_specific():
+    """ Collect all python3 specific packages that are missed by cx-Freeze """
+
+    packages = [
         # "future",  # building with python 3.5 does not include this
         # otherwise zmq.auth.thread cannot be found:
         # ImportError: No module named zmq.auth.thread
@@ -156,8 +163,14 @@ if sys.version_info.major >= 3:
         # ModuleNotFoundError: No module named 'ldap3'
         "ldap3"
     ]
-else:
-    VERSION_SPECIFIC_PACKAGES = [
+
+    return packages
+
+
+def get_python2_specific():
+    """ Collect all python2 specific packages that are missed by cx-Freeze """
+
+    packages = [
         "ConfigParser",
         # otherwise logutils cannot be found
         # ImportError: No module named logutils.queue
@@ -172,6 +185,21 @@ else:
         # ImportError: No module named yaml
         "yaml"
     ]
+
+    return packages
+
+
+if platform.system() == "Windows":
+    PLATFORM_SPECIFIC_PACKAGES, PLATFORM_SPECIFIC_FILES = windows_specific()
+else:
+    PLATFORM_SPECIFIC_PACKAGES, PLATFORM_SPECIFIC_FILES = linux_specific()
+
+
+# Some packages differ in Python 3
+if sys.version_info.major >= 3:
+    VERSION_SPECIFIC_PACKAGES = get_python3_specific()
+else:
+    VERSION_SPECIFIC_PACKAGES = get_python2_specific()
 
 
 # Dependencies are automatically detected, but it might need fine tuning.

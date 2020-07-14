@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # Copyright (C) 201-2020  DESY, Manuela Kuhn, Notkestr. 85, D-22607 Hamburg
 #
