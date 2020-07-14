@@ -1,5 +1,9 @@
 # develop
 # 4.3.0
+
+- Switch packaging to use python3
+- Fix clean up for cento packaging
+
 # 4.2.1
 
 - Increase wait time for control server to avoid acquiring incomplete configurations
