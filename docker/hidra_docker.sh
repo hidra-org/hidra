@@ -96,7 +96,7 @@ set_hidra_type_specifics()
 #    if [[ "$hidratype" == "api" ]]
 #    then
 #        DOCKER_OPTIONS="${DOCKER_OPTIONS} \
-#            -v ${hidradir}/src/APIs/hidra:/usr/local/lib/python2.7/dist-packages/hidra"
+#            -v ${hidradir}/src/APIs/hidra:/usr/local/lib/python3.8/dist-packages/hidra"
 #
 #    else
     if [[ "$hidratype" != "api" ]]
