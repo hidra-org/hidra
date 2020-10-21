@@ -1,6 +1,10 @@
 # develop
 # 4.2.2
 
+- Fix restarting running instances via control client
+- Fix missing space in start script
+- Add missing dependency on python-future
+
 # 4.2.1
 
 - Increase wait time for control server to avoid acquiring incomplete configurations
