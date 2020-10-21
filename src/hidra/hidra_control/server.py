@@ -1053,19 +1053,10 @@ class ControlServer(utils.Base):
                                "instance=%s", beamline, det_id)
 
                 # use hidra controller mechanism
-                self.controller[det_id] = HidraController(
-                    self.context,
-                    beamline,
-                    det_id,
-                    # to prevent different detector processes to write into the
-                    # same config
-                    copy.deepcopy(self.config),
-                    self.instances,
-                    self.log_queue
-                )
+                controller = self._get_hidra_controller(det_id)
 
                 # restart
-                ret_val = self.controller[det_id].start("restart")
+                ret_val = controller.start("restart")
                 if ret_val == self.reply_codes.running:
                     self.log.info("Started hidra for %s_%s, already running",
                                   self.beamline, det_id)
@@ -1246,20 +1237,7 @@ class ControlServer(utils.Base):
         # --------------------------------------------------------------------
         # get hidra controller
         # --------------------------------------------------------------------
-        try:
-            controller = self.controller[det_id]
-        except KeyError:
-            self.controller[det_id] = HidraController(
-                self.context,
-                self.beamline,
-                det_id,
-                # to prevent different detector processes to write into the
-                # same config
-                copy.deepcopy(self.config),
-                self.instances,
-                self.log_queue
-            )
-            controller = self.controller[det_id]
+        controller = self._get_hidra_controller(det_id)
 
         # --------------------------------------------------------------------
         # react to message
@@ -1277,6 +1255,24 @@ class ControlServer(utils.Base):
             return controller.bye(host_id)
         else:
             return self.reply_codes.error
+
+    def _get_hidra_controller(self, det_id):
+        try:
+            controller = self.controller[det_id]
+        except KeyError:
+            self.controller[det_id] = HidraController(
+                self.context,
+                self.beamline,
+                det_id,
+                # to prevent different detector processes to write into the
+                # same config
+                copy.deepcopy(self.config),
+                self.instances,
+                self.log_queue
+            )
+            controller = self.controller[det_id]
+
+        return controller
 
     def _check_netgroup(self, name, str_name, error_msg):
         try:
@@ -1325,16 +1321,7 @@ class ControlServer(utils.Base):
         self.log.debug("Closing old instance for detector %s", det_id)
 
         # use hidra controller mechanism
-        controller = HidraController(
-            self.context,
-            self.beamline,
-            det_id,
-            # to prevent different detector processes to write into the
-            # same config
-            copy.deepcopy(self.config),
-            self.instances,
-            self.log_queue
-        )
+        controller = self._get_hidra_controller(det_id)
 
         # stop
         return controller.stop()

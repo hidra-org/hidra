@@ -250,7 +250,7 @@ then
     SHOW_SCRIPT_SETTINGS=true
 fi
 
-if ["${VERBOSE}" == "true" ]
+if [ "${VERBOSE}" == "true" ]
 then
     DAEMON_ARGS="${DAEMON_ARGS} --verbose"
 fi
