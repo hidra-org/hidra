@@ -1,8 +1,13 @@
-hidra (4.2.1-2+deb9u5~fsec) stretch; urgency=low
+hidra (4.2.2-2+deb9u5~fsec) stretch; urgency=low
 
   * Switch hidra and hidra-control-client to python3
 
  -- M. Kuhn <manuela.kuhn@desy.de>  Mon, 13 Jul 2020 11:42:27 +0200
+hidra (4.2.2-1+deb9u5~fsec) stretch; urgency=low
+
+  * Bump version
+
+ -- M. Kuhn <manuela.kuhn@desy.de>  Fri, 31 Jul 2020 12:29:20 +0200
 hidra (4.2.1-1+deb9u5~fsec) stretch; urgency=low
 
   * Bump version

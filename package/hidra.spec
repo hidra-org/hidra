@@ -1,5 +1,5 @@
 Name:		hidra
-Version:	4.2.1
+Version:	4.2.2
 Release:	3%{?dist}
 Summary:	High performance data multiplexing tool
 
@@ -35,6 +35,7 @@ Requires:	python-pathlib
 Requires:	python-zmq >= 14.5.0
 Requires:	PyYAML
 Requires:	python2-ldap3
+Requires:   python-future
 
 %description -n python2-hidra
 This package contains only the API for developing tools against HiDRA.
@@ -147,10 +148,12 @@ mkdir -p %{buildroot}/var/log/%{name}
 %config(noreplace) /opt/%{name}/conf/control_client.yaml
 
 %changelog
-* Mon Jul 13 2020 Manuela Kuhn <manuela.kuhn@desy.de> - 4.2.1-3
+* Mon Jul 13 2020 Manuela Kuhn <manuela.kuhn@desy.de> - 4.2.2-3
 - Fix directory removal when package is removed
-* Fri Jul 10 2020 Manuela Kuhn <manuela.kuhn@desy.de> - 4.2.1-2
+* Fri Jul 10 2020 Manuela Kuhn <manuela.kuhn@desy.de> - 4.2.2-2
 - Switch hidra and hidra-control-client to python3
+* Fri Jul 31 2020 Manuela Kuhn <manuela.kuhn@desy.de> - 4.2.2-1
+- Bump version
 * Wed Jul 08 2020 Manuela Kuhn <manuela.kuhn@desy.de> - 4.2.1-1
 - Bump version
 * Mon Jun 22 2020 Manuela Kuhn <manuela.kuhn@desy.de> - 4.2.0-2
