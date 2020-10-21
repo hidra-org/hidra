@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -uex
+
 DEFAULT_VERSION=9
 DEFAULT_NAME=stretch
 
@@ -13,6 +15,11 @@ fix_debian_version()
     then
         set_package_release=10
         set_standards_version=4.4.0
+    # debian 9
+    elif [ "$DEBIAN_VERSION" == "9" ]
+    then
+        set_package_release=$default_release
+        set_standards_version=4.1.4
     # debian 8
     elif [ "$DEBIAN_VERSION" == "8" ]
     then
@@ -202,6 +209,7 @@ main()
     get_hidra_version
 
     MAPPED_DIR="/tmp/hidra_builds/debian${DEBIAN_VERSION}/${HIDRA_VERSION}"
+    rm -rf "$MAPPED_DIR"
 
     echo "Create packages for hidra tag $TAG for version $HIDRA_VERSION"
 
