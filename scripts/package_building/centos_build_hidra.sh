@@ -11,8 +11,11 @@ get_hidra_version()
     # get the current git version (based on *last* tag)
     GIT_VERSION=$(git describe)
 
-    # replace last tag with future version
-    HIDRA_VERSION=${NEXT_HIDRA_VERSION}.dev${GIT_VERSION#*-}
+    if [[ "${GIT_VERSION}" =~ - ]]; then
+        HIDRA_VERSION=${NEXT_HIDRA_VERSION}.dev${GIT_VERSION#*-}
+    else
+        HIDRA_VERSION=${NEXT_HIDRA_VERSION}
+    fi
 
     # according to PEP440, local part separator is "+"
     HIDRA_VERSION=${HIDRA_VERSION/-/+}
