@@ -96,11 +96,18 @@ download_hidra()
     if [ "$HIDRA_LOCATION" != "" ]; then
         printf "Copy hidra from $HIDRA_LOCATION\n"
         # local directory can contain unnecessary data or files
-        rsync -av --quiet "$HIDRA_LOCATION" "$MAPPED_DIR" \
-            --exclude .git \
-            --exclude data \
-            --exclude virtualenvs \
-            --exclude venv
+        git clone "$HIDRA_LOCATION" "$MAPPED_DIR"/hidra
+
+        pushd "$MAPPED_DIR"/hidra
+        if git show-ref --verify --quiet refs/remotes/origin/local_patches; then
+            # a branch named local_patches exists locally
+            # see https://stackoverflow.com/q/5167957
+            CURRENT_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
+            git checkout local_patches
+            git config user.email "tim.schoof@desy.de" && git config user.name "Tim Schoof"
+            git rebase "${CURRENT_BRANCH}"
+        fi
+        popd
         return
     fi
 

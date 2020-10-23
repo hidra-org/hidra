@@ -95,6 +95,14 @@ IN_DOCKER_DIR=~/rpmbuild
 
 prepare_build
 
+if git show-ref --verify --quiet refs/heads/local_patches; then
+    # a branch named local_patches exists locally
+    # see https://stackoverflow.com/q/5167957
+    CURRENT_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
+    git checkout local_patches
+    git rebase "${CURRENT_BRANCH}"
+fi
+
 git archive --format tar --prefix="hidra-${HIDRA_VERSION}/" -o "${BUILD_DIR}/SOURCES/hidra-${HIDRA_VERSION}.tar.gz" HEAD
 cp package/hidra.spec "${BUILD_DIR}/SPECS"
 sed -i "s/${NEXT_HIDRA_VERSION}/${HIDRA_VERSION}/" "${BUILD_DIR}/SPECS/hidra.spec"
