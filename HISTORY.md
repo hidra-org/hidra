@@ -1,5 +1,8 @@
 # develop
+# 4.2.4
 # 4.2.3
+
+- Update list of beamlines
 
 # 4.2.2
 

@@ -1,6 +1,6 @@
 Name:		hidra
-Version:	4.2.3
-Release:	2%{?dist}
+Version:	4.2.4
+Release:	1%{?dist}
 Summary:	High performance data multiplexing tool
 
 License:	AGPLv3
@@ -138,6 +138,8 @@ mkdir -p %{buildroot}/var/log/%{name}
 %config(noreplace) /opt/%{name}/conf/control_client.yaml
 
 %changelog
+* Thu Nov 12 2020 Manuela Kuhn <manuela.kuhn@desy.de> - 4.2.4-1
+- Bump version
 * Wed Oct 21 2020 Manuela Kuhn <manuela.kuhn@desy.de> - 4.2.3-1
 - Bump version
 * Fri Jul 31 2020 Manuela Kuhn <manuela.kuhn@desy.de> - 4.2.2-1
