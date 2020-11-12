@@ -405,6 +405,9 @@ def change_user(config):
         # get uid as int
         user_info = pwd.getpwnam(config["username"])
 
+        # set supplemental gids
+        os.initgroups(config["username"], user_info.pw_gid)
+
         os.setegid(user_info.pw_gid)
         os.seteuid(user_info.pw_uid)
     except AttributeError:
