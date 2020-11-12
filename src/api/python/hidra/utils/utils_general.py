@@ -405,6 +405,7 @@ def change_user(config):
         # get uid as int
         user_info = pwd.getpwnam(config["username"])
 
+        os.setegid(user_info.pw_gid)
         os.seteuid(user_info.pw_uid)
     except AttributeError:
         # on windows (user change is not possible)
@@ -432,11 +433,11 @@ def log_user_change(log, user_was_changed, user_info):
         return
 
     if user_was_changed:
-        log.info("Running as user %s (uid %s)",
-                 user_info.pw_name, user_info.pw_uid)
+        log.info("Running as user %s (uid %s, gid %s)",
+                 user_info.pw_name, user_info.pw_uid, user_info.pw_gid)
     else:
-        log.info("No user change needed, running as user %s (uid %s)",
-                 user_info.pw_name, user_info.pw_uid)
+        log.info("No user change needed, running as user %s (uid %s, gid %s)",
+                 user_info.pw_name, user_info.pw_uid, user_info.pw_gid)
 
 
 def get_files_in_dir(dirs):
