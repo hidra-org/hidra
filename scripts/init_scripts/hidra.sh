@@ -321,7 +321,7 @@ if [ -f /etc/redhat-release ] || [ -f /etc/centos-release ] ; then
         printf "%-50s" "Stopping ${NAME}..."
         HIDRA_PID="$(pidofproc "${NAME}")"
         # stop gracefully and wait up to 180 seconds.
-        kill "$HIDRA_PID" > /dev/null 2>&1
+        kill $HIDRA_PID > /dev/null 2>&1
 
         TIMEOUT=0
 #        while checkpid $HIDRA_PID && [ $TIMEOUT -lt 30 ] ; do

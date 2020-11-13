@@ -1,5 +1,13 @@
 # develop
+
+# 4.2.4
+
+- Change GIDs as well when changing UID
+- Fix stopping Hidra processes in hidra.sh
+
 # 4.2.3
+
+- Update list of beamlines
 
 # 4.2.2
 
