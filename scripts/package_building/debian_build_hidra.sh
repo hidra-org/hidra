@@ -240,7 +240,14 @@ main()
     #docker rmi "${DOCKER_IMAGE}"
     rm -rf "$MAPPED_DIR/hidra"
 
-    echo "Debian ${DEBIAN_VERSION} packages can be found in ${MAPPED_DIR}"
+    if [ "$HIDRA_LOCATION" != "" ]; then
+        build_dir="$HIDRA_LOCATION"/build/debian${DEBIAN_VERSION}/${HIDRA_VERSION}
+        mkdir -p $build_dir
+        cp "$MAPPED_DIR"/* $build_dir
+        echo "Debian ${DEBIAN_VERSION} packages can be found in ${build_dir}"
+    else
+        echo "Debian ${DEBIAN_VERSION} packages can be found in ${MAPPED_DIR}"
+    fi
 }
 
 main "$@"
