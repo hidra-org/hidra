@@ -1,0 +1,169 @@
+version: "3.8"
+services:
+    ldap:
+        image: hidratest-ldap
+        build: test/docker/ldap
+        platform: linux
+        container_name: ldap
+        domainname: hidra.test
+        networks:
+            hidra:
+                aliases:
+                    - ldap.hidra.test
+
+    receiver:
+        image: hidratest-receiver
+        build: test/docker/receiver
+        platform: linux
+        container_name: asap3-p00
+        hostname: asap3-p00
+        domainname: hidra.test
+        networks:
+            hidra:
+                aliases:
+                    - asap3-p00.hidra.test
+        volumes:
+            - ./build:/hidra/build
+            - ${HIDRA_TESTDIR}/receiver/beamline:/beamline
+        ports:
+            - "5680:5680"
+        depends_on:
+            - ldap
+        tty: true
+
+    eiger:
+        image: hidratest-eiger
+        build: test/docker/eiger
+        platform: linux
+        container_name: eiger
+        hostname: eiger
+        domainname: hidra.test
+        networks:
+            hidra:
+                aliases:
+                    - eiger.hidra.test
+        depends_on:
+            - receiver
+
+    control-client:
+        image: hidratest-control-client
+        build: test/docker/control-client
+        platform: linux
+        container_name: control-client
+        hostname: control-client
+        domainname: hidra.test
+        init: true
+        networks:
+            hidra:
+                aliases:
+                    - control-client.hidra.test
+        volumes:
+            - ./build:/hidra/build
+        ports:
+            - "5682:5682"
+        depends_on:
+            - ldap
+            - eiger
+            - receiver
+        tty: true
+
+    transfer-client:
+        image: hidratest-transfer-client
+        build: test/docker/transfer-client
+        platform: linux
+        container_name: transfer-client
+        hostname: transfer-client
+        domainname: hidra.test
+        init: true
+        networks:
+            hidra:
+                aliases:
+                    - transfer-client.hidra.test
+        volumes:
+            - ./build:/hidra/build
+        ports:
+            - "5683:5683"
+        depends_on:
+            - ldap
+        tty: true
+
+    sender-freeze:
+        image: hidratest-sender-freeze
+        build:
+            context: test/docker/sender
+            dockerfile: Dockerfile_freeze
+            args:
+                user_uid: ${UID}
+        platform: linux
+        container_name: sender-freeze
+        hostname: sender-freeze
+        domainname: hidra.test
+        init: true
+        user: "${UID}:${UID}"
+        networks:
+            hidra:
+                aliases:
+                    - sender-freeze.hidra.test
+        volumes:
+            - ./build:/hidra/build
+            - ${HIDRA_TESTDIR}/sender-freeze/ramdisk:/ramdisk
+        ports:
+            - "5685:5685"
+        depends_on:
+            - ldap
+        tty: true
+
+    sender-debian:
+        image: hidratest-sender-debian
+        build:
+            context: test/docker/sender
+            dockerfile: Dockerfile_debian
+            args:
+                user_uid: ${UID}
+        platform: linux
+        container_name: sender-debian
+        hostname: sender-debian
+        domainname: hidra.test
+        init: true
+        networks:
+            hidra:
+                aliases:
+                    - sender-debian.hidra.test
+        volumes:
+            - ./build:/hidra/build
+            - ${HIDRA_TESTDIR}/sender-debian/ramdisk:/ramdisk
+        ports:
+            - "5686:5686"
+        depends_on:
+            - ldap
+        tty: true
+
+    sender-suse:
+        image: hidratest-sender-suse
+        build:
+            context: test/docker/sender
+            dockerfile: Dockerfile_suse
+            args:
+                user_uid: ${UID}
+        platform: linux
+        container_name: sender-suse
+        hostname: sender-suse
+        domainname: hidra.test
+        init: true
+        networks:
+            hidra:
+                aliases:
+                    - sender-suse.hidra.test
+        volumes:
+            - ./build:/hidra/build
+            - ${HIDRA_TESTDIR}/sender-suse/ramdisk:/ramdisk
+        ports:
+            - "5687:5687"
+        depends_on:
+            - ldap
+        tty: true
+
+
+networks:
+  hidra:
+    name: hidra.test

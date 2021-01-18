@@ -1,0 +1,221 @@
+general:
+    # Path where the logfile will be created
+    #log_path: /opt/hidra/logs
+    log_path: /var/log/hidra
+
+    # Filename used for logging
+    # (possible placeholders are: date -> YYYY-MM-DD)
+    log_name: datamanager_p00.log
+
+    # User as which the service should be running
+    username: hidra
+
+    # Name with which the service should be running
+    procname: hidra_p00
+
+    ldapuri: "ldap.hidra.test"
+
+    # List of hosts allowed to connect. Options are:
+    # [] - Nobody is allowed to connect
+    # [<host>, <host>] - The hosts in the list are allowed to connect.
+    # None - Everybody is allowed to connect.
+    #whitelist: []
+    #whitelist: ["localhost"]
+    whitelist: ["a3p00-hosts"]
+
+eventdetector:
+    # Type of event detector to use (options are:
+    # inotifyx_events, watchdog_events, zmq_events, http_events)
+    # Inotifyx is not python3 compatible,
+    # see https://bugs.launchpad.net/inotifyx/+bug/1006053
+    type: inotify_events
+
+    inotifyx_events:
+        # Directory to be monitor for changes
+        # Inside this directory only the subdirectories "commissioning",
+        # "current" and "local" are monitored
+        monitored_dir: &monitored_dir /ramdisk
+
+        # Subdirectories to be monitored and to store data to. These directory
+        # have to exist when HiDRA is started and should not be removed during
+        # the run.
+        fix_subdirs: &fix_subdirs
+            - "commissioning/raw"
+            - "commissioning/scratch_bl"
+            - "current/raw"
+            - "current/scratch_bl"
+            - "local"
+
+        # Flag describing if the subdirectories should be created if they do
+        # not exist.
+        create_fix_subdirs: True
+
+        # Event type of files (options are: IN_CLOSE_WRITE, IN_MOVED_TO, ...)
+        # and the formats to be monitored, files in an other format will be be
+        # neglected
+        monitored_events: &monitored_events {"IN_CLOSE_WRITE": [""]}
+#        monitored_events: &monitored_events
+#            IN_CLOSE_WRITE:
+#                - ".tif"
+#                - ".cbf"
+#                - ".nxs"
+#                - ".file"
+#        monitored_events: &monitored_events
+#            IN_CLOSE_WRITE:
+#                - ".tif"
+#                - ".cbf"
+#                - ".nxs"
+#            IN_MOVED_TO:
+#                - ".log"
+#        monitored events: &monitored_events
+#            IN_MOVED_TO:
+#                - ".tif"
+#                - ".cbf"
+#                - ".nxs"
+#            IN_CLOSE_WRITE:
+#                - ".log"
+#        monitored_events: &monitored_events
+#            NO_EVENT_MONITORED:
+#                - ".cbf"
+
+        # Timeout after which the event generator should return if no events
+        # where detected.
+        event_timeout: 1
+
+        # Number of events stored to look for doubles
+        #history_size: 2000
+        #history_size: 5
+        history_size: 0
+
+        # Flag describing if a clean up thread which regularly checks
+        # if some files were missed should be activated
+        #use_cleanup: True
+        use_cleanup: False
+
+        # Interval time (in seconds) used for clean up resp. checking of events
+        # (only needed use_cleanup is enabled)
+        #action_time: 150
+        action_time: 10
+
+        # Time (in seconds) since last modification after which a file will be
+        # seen as closed
+        # (only needed if use_cleanup is enabled)
+        time_till_closed: 2
+
+    inotify_events:
+        # Directory to be monitor for changes
+        # Inside this directory only the subdirectories "commissioning",
+        # "current" and "local" are monitored
+        monitored_dir: *monitored_dir
+
+        # Subdirectories to be monitored and to store data to. These
+        # directories have to exist when HiDRA is started and should not be
+        # removed during the run.
+        fix_subdirs: *fix_subdirs
+
+        # Flag describing if the subdirectories should be created if they do
+        # not exist.
+        create_fix_subdirs: True
+
+        # Event type of files (options are: IN_CLOSE_WRITE, IN_MOVED_TO, ...)
+        # and the formats to be monitored, files in an other format will be be
+        # neglected
+        monitored_events: *monitored_events
+
+        # Timeout after which the event generator should return if no events
+        # where detected.
+        event_timeout: 1
+
+        # Number of events stored to look for doubles
+        history_size: 0
+
+        # Flag describing if a clean up thread which regularly checks
+        # if some files were missed should be activated
+        use_cleanup: False
+
+        # Interval time (in seconds) used for clean up resp. checking of events
+        # (only needed if use_cleanup is enabled)
+        action_time: 10
+
+        # Time (in seconds) since last modification after which a file
+        # will be seen as closed
+        # (only needed if use_cleanup is enabled)
+        time_till_closed: 2
+
+    watchdog_events:
+        # Directory to be monitor for changes
+        # Inside this directory only the subdirectories "commissioning",
+        # "current" and "local" are monitored
+        monitored_dir: *monitored_dir
+
+        # Subdirectories to be monitored and to store data to. These directory
+        # have to exist when HiDRA is started and should not be removed during
+        # the run.
+        fix_subdirs: *fix_subdirs
+
+        # Flag describing if the subdirectories should be created if they do
+        # not exist.
+        create_fix_subdirs: False
+
+        # Event type of files (options are: IN_CLOSE_WRITE, IN_MOVED_TO, ...)
+        # and the formats to be monitored, files in an other format will be be
+        # neglected
+        monitored_events: *monitored_events
+
+        # Interval time (in seconds) used for clean up resp. checking of events
+        #action_time: 150
+        action_time: 10
+
+        # Time (in seconds) since last modification after which a file
+        # will be seen as closed
+        time_till_closed: 2
+
+datafetcher:
+    # Module with methods specifying how to get the data
+    type: file_fetcher
+    #type: http_fetcher
+    #type: hidra_fetcher
+    #type: zmq_fetcher
+    #type: no_data_fetcher
+
+    # Enable ZMQ pipe into storage system
+    use_data_stream: True
+
+    # Fixed host and port to send the data to with highest priority
+    # (only needed if use_data_stream is enabled)
+    data_stream_targets: [["asap3-p00", 50100]]
+
+    # Number of parallel data streams
+    number_of_streams: 4
+
+    # Should the files be removed from the source. Options are:
+    # False - data stays on the source.
+    # True - data is removed from the source after processing it.
+    # stop_on_error - only supported if use_data_stream is enabled;
+    #                 datamanager gets a feedback if the data writing was
+    #                 successful.
+    #                 When an error occurs the datamanager goes into error
+    #                 state till it gets a notification that the error on the
+    #                 data receiving side was handled.
+    # with_confirmation - only supported if use_data_stream is enabled and
+    #                     datafetcher_type is file_fetcher or http_fetcher;
+    #                     data is removed from the source only after the target
+    #                     sent a verification.
+    #                     In case that a file could not be transferred, it is
+    #                     not removed from the source. Here the datamanager
+    #                     does not go in error state and new files are
+    #                     transferred if possible.
+    #remove_data: True
+    #remove_data: False
+    #remove_data: stop_on_error
+    remove_data: with_confirmation
+
+    # Flag describing if the data should be stored in local_target
+    #store_data: True
+    store_data: False
+
+    # Target directory to move the files into (needed if store_data is enabled)
+    local_target: /tmp/hidra_target
+
+    file_fetcher:
+        fix_subdirs: *fix_subdirs

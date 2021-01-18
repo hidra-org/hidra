@@ -1,0 +1,74 @@
+controlserver:
+    log_path: &log_path /var/log/hidra
+    log_size: 10485760
+
+    # use {bl} as placeholder for the beamline
+    log_name: hidra-control-server_{bl}.log
+    procname: hidra-control-server_{bl}
+
+    # use {bl} as placeholder for the beamline
+    backup_file: /beamline/support/hidra/instances_{bl}.txt
+
+    # User as which the service should be running
+    #username: {bl}user
+
+    ldapuri: "ldap.hidra.test"
+
+    # use {bl} as placeholder for the beamline
+    netgroup_template: "a3{bl}-hosts"
+
+    # use {bl} as placeholder for the beamline and {det} for the detector
+    hidra_config_name: datamanager_{bl}_{det}.yaml
+
+hidraconfig_static:
+    general:
+        log_path: *log_path
+        log_size: 10485760
+        # if one control instance should be able to control hidra instance for
+        # multiple detectors use these:
+        com_port: random
+        request_port: random
+        use_statserver: True
+        # if there is no need for multiple detectors activate these:
+        # com_port: 50000
+        # request_port: 50001
+        # use_statserver: False
+        taskprovider_timeout: None
+    eventdetector:
+        type: http_events
+        # type: inotifyx_events
+        inotifyx_events:
+            fix_subdirs: &fix_subdirs
+                - current/raw
+                - current/scratch_bl
+                - commissioning/raw
+                - commissioning/scratch_bl
+                - local
+            # monitored_events:
+            #     IN_CLOSE_WRITE :
+            #         - .tif
+            #         - .cbf
+            #         - .nxs
+            use_cleanup: False
+            action_time: 150
+            time_till_closed: 2
+        http_events:
+            fix_subdirs: *fix_subdirs
+    datafetcher:
+        type: http_fetcher
+        # type: file_fetcher
+        use_data_stream: False
+        number_of_streams: 4
+        chunksize: 10485760
+        http_fetcher:
+            fix_subdirs: *fix_subdirs
+
+hidraconfig_variable:
+# use {bl} as placeholder for the beamline
+    general:
+        log_name: datamanager_{bl}
+        procname: hidra_{bl}
+        # quotes needed because placeholder is at the beginning
+        username: "{bl}user"
+    datafetcher:
+        local_target: /beamline/{bl}
