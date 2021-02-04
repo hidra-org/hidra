@@ -4,6 +4,7 @@ set -uex
 
 HIDRA_DIR=`pwd`
 get_hidra_version
+HIDRA_VERSION_DEBIAN=${HIDRA_VERSION%.dev*}
 
 export HIDRA_TESTDIR=$(mktemp -d --tmpdir hidra_test_dir.XXXXXX)
 export UID
@@ -68,7 +69,7 @@ chmod -R 777 ${HIDRA_TESTDIR}/sender-freeze/ramdisk
 
 # setup sender-debian
 docker-compose exec sender-debian apt install -y \
-    ./build/debian9/${HIDRA_VERSION}/*.deb
+    ./build/debian9/${HIDRA_VERSION_DEBIAN}/*.deb
 
 docker-compose exec sender-debian cp /conf/datamanager_p00.yaml /opt/hidra/conf
 
@@ -84,7 +85,7 @@ chmod -R 777 ${HIDRA_TESTDIR}/sender-debian/ramdisk
 
 # setup sender-debian10
 docker-compose exec sender-debian10 apt install -y \
-    ./build/debian10/${HIDRA_VERSION}/*.deb
+    ./build/debian10/${HIDRA_VERSION_DEBIAN}/*.deb
 
 docker-compose exec sender-debian10 cp /conf/datamanager_p00.yaml /opt/hidra/conf
 
