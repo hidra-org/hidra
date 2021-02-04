@@ -68,6 +68,7 @@ chmod -R 777 ${HIDRA_TESTDIR}/sender-freeze/ramdisk
 
 
 # setup sender-debian
+docker-compose exec sender-debian apt update
 docker-compose exec sender-debian apt install -y \
     ./build/debian9/${HIDRA_VERSION_DEBIAN}/*.deb
 
@@ -84,6 +85,7 @@ chmod -R 777 ${HIDRA_TESTDIR}/sender-debian/ramdisk
 
 
 # setup sender-debian10
+docker-compose exec sender-debian10 apt update
 docker-compose exec sender-debian10 apt install -y \
     ./build/debian10/${HIDRA_VERSION_DEBIAN}/*.deb
 
