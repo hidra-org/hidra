@@ -197,12 +197,13 @@ def start_sender_systemctl(sender):
 
 def stop_sender(sender_type):
     if sender_type in ["sender-freeze", "sender-suse"]:
-        stop_sender_script(sender_type)
-    elif sender_type in ["sender-debian"]:
+        out = stop_sender_script(sender_type)
+    elif sender_type in ["sender-debian", "sender-debian10"]:
         out = stop_sender_systemctl(sender_type)
         assert out.returncode == 0
     else:
         raise ValueError("Sender type not supported")
+    return out
 
 
 def start_sender(
