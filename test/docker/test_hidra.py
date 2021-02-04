@@ -248,7 +248,8 @@ def start_sender(
 
 @pytest.fixture(
     scope="module",
-    params=["sender-freeze", "sender-debian", "sender-suse"])
+    params=[
+        "sender-freeze", "sender-debian", "sender-debian10", "sender-suse"])
 def sender_type(request):
     return request.param
 

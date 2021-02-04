@@ -27,6 +27,8 @@ mkdir -p ${HIDRA_TESTDIR}/sender-freeze/ramdisk
 chmod -R 777 ${HIDRA_TESTDIR}/sender-freeze/ramdisk
 mkdir -p ${HIDRA_TESTDIR}/sender-debian/ramdisk
 chmod -R 777 ${HIDRA_TESTDIR}/sender-debian/ramdisk
+mkdir -p ${HIDRA_TESTDIR}/sender-debian10/ramdisk
+chmod -R 777 ${HIDRA_TESTDIR}/sender-debian10/ramdisk
 mkdir -p ${HIDRA_TESTDIR}/sender-suse/ramdisk
 chmod -R 777 ${HIDRA_TESTDIR}/sender-suse/ramdisk
 
@@ -78,6 +80,22 @@ docker-compose exec -T --env TERM=linux sender-debian systemctl status hidra@p00
 docker-compose exec -T --env TERM=linux sender-debian systemctl stop hidra@p00
 
 chmod -R 777 ${HIDRA_TESTDIR}/sender-debian/ramdisk
+
+
+# setup sender-debian10
+docker-compose exec sender-debian10 apt install -y \
+    ./build/debian10/${HIDRA_VERSION}/*.deb
+
+docker-compose exec sender-debian10 cp /conf/datamanager_p00.yaml /opt/hidra/conf
+
+# A small initial test
+# -T is necessary for the started processes to survive after the command finishes
+# --env TERM=linux is necessary for hidra.sh because of -T
+docker-compose exec -T --env TERM=linux sender-debian10 systemctl start hidra@p00
+docker-compose exec -T --env TERM=linux sender-debian10 systemctl status hidra@p00
+docker-compose exec -T --env TERM=linux sender-debian10 systemctl stop hidra@p00
+
+chmod -R 777 ${HIDRA_TESTDIR}/sender-debian10/ramdisk
 
 
 # setup sender-suse
