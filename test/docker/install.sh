@@ -52,7 +52,7 @@ docker-compose exec receiver systemctl is-active hidra-control-server@p00
 # setup sender-freeze
 docker-compose exec sender-freeze mkdir -p /opt/hidra
 docker-compose exec sender-freeze tar -xf \
-    build/freeze/hidra-${HIDRA_VERSION}-x86_64-2.7-manylinux1.tar.gz \
+    build/freeze/hidra-${HIDRA_VERSION}*-x86_64-2.7-manylinux1.tar.gz \
     --directory /opt/hidra --strip-components=1
 
 docker-compose exec sender-freeze cp /conf/datamanager_p00.yaml /opt/hidra/conf
@@ -102,7 +102,7 @@ chmod -R 777 ${HIDRA_TESTDIR}/sender-debian10/ramdisk
 # setup sender-suse
 docker-compose exec sender-suse mkdir -p /opt/hidra
 docker-compose exec sender-suse tar -xf \
-    build/freeze/hidra-${HIDRA_VERSION}-x86_64-2.7-manylinux1.tar.gz \
+    build/freeze/hidra-${HIDRA_VERSION}*-x86_64-2.7-manylinux1.tar.gz \
     --directory /opt/hidra --strip-components=1
 
 docker-compose exec sender-suse cp /conf/datamanager_p00.yaml /opt/hidra/conf
