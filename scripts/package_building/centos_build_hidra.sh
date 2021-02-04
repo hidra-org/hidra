@@ -105,6 +105,11 @@ fi
 
 git archive --format tar --prefix="hidra-${HIDRA_VERSION}/" -o "${BUILD_DIR}/SOURCES/hidra-${HIDRA_VERSION}.tar.gz" HEAD
 cp package/hidra.spec "${BUILD_DIR}/SPECS"
+
+if git show-ref --verify --quiet refs/heads/local_patches; then
+    git checkout "${CURRENT_BRANCH}"
+fi
+
 sed -i "s/${NEXT_HIDRA_VERSION}/${HIDRA_VERSION}/" "${BUILD_DIR}/SPECS/hidra.spec"
 
 build_docker_image
