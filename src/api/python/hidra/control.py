@@ -128,6 +128,15 @@ class Control(Base):
             endpoint=endpoint
         )
 
+        # On newer pyzmq versions, tracker only works as expected for messages
+        # that are not copied. Messages below the copy threshold are always
+        # copied even if copy=False is given
+        try:
+            self.socket.copy_threshold = 0
+        except AttributeError:
+            # older zmq version that don't have this attribute are fine
+            pass
+
         self._check_responding()
         self.log.info("Starting connection to %s", endpoint)
 
