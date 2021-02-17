@@ -172,6 +172,10 @@ class EventDetector(EventDetectorBase):
         if isinstance(files_stored, dict):
             files_stored = files_stored["value"]
 
+        # api version 1.8.0 and newer can return None instead of an empty list
+        if files_stored is None:
+            files_stored = []
+
         if (not files_stored
                 or set(files_stored).issubset(self.files_downloaded)):
             # no new files received

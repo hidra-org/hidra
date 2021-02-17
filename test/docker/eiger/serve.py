@@ -10,6 +10,9 @@ PORT = 80
 
 def update_index_file(filenames, api_version="1.8.0"):
     if api_version == "1.8.0":
+        if not filenames:
+            # No files are returned as None
+            filenames = None
         content = {"value": filenames, "value_type": "list"}
     elif api_version == "1.6.0":
         content = filenames
