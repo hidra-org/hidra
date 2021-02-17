@@ -6,8 +6,10 @@ HIDRA_DIR=`pwd`
 get_hidra_version
 HIDRA_VERSION_DEBIAN=${HIDRA_VERSION%.dev*}
 
-export HIDRA_TESTDIR=$(mktemp -d --tmpdir hidra_test_dir.XXXXXX)
+export HIDRA_TESTDIR
 export UID
+
+[[ -z "${HIDRA_TESTDIR}" ]] && exit 1
 
 # prepare hidra environment
 mkdir -p ${HIDRA_TESTDIR}/receiver/beamline/support/hidra
