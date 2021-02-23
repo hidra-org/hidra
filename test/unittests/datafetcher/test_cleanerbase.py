@@ -62,8 +62,6 @@ class TestDataFetcher(DataFetcherTestBase):
             }
         }
 
-        self.stop_request = multiprocessing.Event()
-
     def test_cleaner(self):
         """Simulate a simple cleaner.
         """

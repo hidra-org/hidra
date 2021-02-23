@@ -30,13 +30,8 @@ from __future__ import unicode_literals
 # requires dependency on future
 from builtins import super  # pylint: disable=redefined-builtin
 
-try:
-    import unittest.mock as mock
-except ImportError:
-    # for python2
-    import mock
-
 import threading
+import multiprocessing
 import zmq
 
 from test_base import TestBase, create_dir
@@ -61,6 +56,7 @@ class DataFetcherTestBase(TestBase):
 
         self.context = zmq.Context()
         self.lock = threading.Lock()
+        self.stop_request = multiprocessing.Event()
 
         self.df_base_config = {
             "config": None,
@@ -68,10 +64,11 @@ class DataFetcherTestBase(TestBase):
             "fetcher_id": "0",
             "context": self.context,
             "lock": self.lock,
-            "stop_request": mock.MagicMock(),
+            "stop_request": self.stop_request,
             "check_dep": True
         }
 
     def tearDown(self):
+        self.stop_request.set()
         super().tearDown()
         self.context.destroy(0)

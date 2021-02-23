@@ -94,8 +94,6 @@ class TestDataFetcher(DataFetcherTestBase):
         self.receiving_sockets = None
         self.control_pub_socket = None
 
-        self.stop_request = multiprocessing.Event()
-
     def test_no_confirmation(self):
         """Simulate file fetching without taking care of confirmation signals.
         """
@@ -262,8 +260,6 @@ class TestDataFetcher(DataFetcherTestBase):
 
             # give signal time to arrive
             time.sleep(1)
-
-        self.stop_request.set()
 
         if self.receiving_sockets is not None:
             for i, sckt in enumerate(self.receiving_sockets):
