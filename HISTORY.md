@@ -1,6 +1,13 @@
 # develop
 # 4.2.5
 
+- Set default values of store_data and remove_data to True for control client
+- Fix control client command line argument for selecting detector API version
+- Fix handling of null return value in detector API version 1.8.0
+- Fix hanging when connecting to offline host
+- Fix unit tests
+- Add docker-based end-to-end tests
+
 # 4.2.4
 
 - Change GIDs as well when changing UID
