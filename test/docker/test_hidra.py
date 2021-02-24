@@ -1,6 +1,7 @@
 import concurrent
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
+import hashlib
 import os
 from pathlib import Path
 import re
@@ -14,13 +15,21 @@ hidra_testdir = Path(os.environ["HIDRA_TESTDIR"])
 receiver_beamline = hidra_testdir / Path("receiver/beamline/p00")
 
 
-def parse_hashes(string):
-    hashes = {}
+def parse_output(string):
+    d = {}
     for line in string.split("\n"):
         if line:
             key, value = line.split(":")
-            hashes[key.strip()] = value.strip()
-    return hashes
+            d[key.strip()] = value.strip()
+    return d
+
+
+def calc_hash(file):
+    with open(file, "rb") as f:
+        data = f.read()
+    md5sum = hashlib.md5()
+    md5sum.update(data)
+    return md5sum.hexdigest()
 
 
 def start_process(cmd):
@@ -117,7 +126,7 @@ def docker_run(name, cmd):
         stderr=subprocess.STDOUT)
 
 
-def control_client(cmd, beamline=None, det=None):
+def control_client(cmd, beamline=None, det=None, detapi="1.6.0"):
     full_cmd = [
         "/opt/hidra/src/hidra/hidra_control/client.py", "--{}".format(cmd)]
 
@@ -126,6 +135,8 @@ def control_client(cmd, beamline=None, det=None):
 
     if det:
         full_cmd += ["--det", det]
+
+    full_cmd += ["--detapi", detapi]
 
     return docker_run("control-client", full_cmd)
 
@@ -141,7 +152,7 @@ def create_eiger_files(
         "--ext", str(ext)]
     out = docker_run("eiger", cmd)
     try:
-        hashes = parse_hashes(out.stdout)
+        hashes = parse_output(out.stdout)
     except ValueError:
         print(out.stdout)
         print(out.stderr)
@@ -282,6 +293,21 @@ def sender_instance(stopped_sender_instance):
     print(out.stderr)
 
 
+@pytest.fixture(scope="module")
+def stopped_eiger_instance():
+    control_client("stop", beamline="p00", det="eiger")
+
+
+@pytest.fixture(
+    scope="module",
+    params=["1.6.0", "1.8.0"])
+def eiger_instance(stopped_eiger_instance, request):
+    detapi = request.param
+    control_client("start", beamline="p00", det="eiger", detapi=detapi)
+    yield {"detapi": detapi}
+    control_client("stop", beamline="p00", det="eiger")
+
+
 def test_control_status_stop():
     control_client("start", beamline="p00", det="eiger")
     control_client("stop", beamline="p00", det="eiger")
@@ -294,6 +320,30 @@ def test_control_status_start():
     control_client("start", beamline="p00", det="eiger")
     ret = control_client("status", beamline="p00", det="eiger")
     assert " RUNNING" in ret.stdout
+
+
+def test_control_eiger_getsettings(eiger_instance):
+    ret = control_client("getsettings", beamline="p00", det="eiger")
+    settings = parse_output(ret.stdout)
+    assert settings["Detector IP"] == "eiger"
+    assert settings["Detector API version"] == eiger_instance["detapi"]
+    assert settings["History size"] == "2000"
+    assert settings["Store data"] == "True"
+    assert settings["Remove data from the detector"] == "True"
+    assert settings["Whitelist"] == "a3p00-hosts"
+    assert settings["Ldapuri"] == "ldap.hidra.test"
+
+
+def test_control_eiger_store_files(eiger_instance):
+    created_hashes = create_eiger_files(
+        number=1, prefix="eiger_store_files_{}-".format(
+            eiger_instance["detapi"]),
+        ext="h5")
+
+    for source_file, hash in created_hashes.items():
+        target_file = receiver_beamline / Path(source_file)
+        assert wait_for(target_file.is_file)
+        assert wait_for(lambda: hash == calc_hash(target_file))
 
 
 def test_transfer_after_restart():
@@ -330,7 +380,7 @@ def test_transfer_after_restart():
         print(stdout)
         print("stderr:")
         print(output + stderr)
-        received_hashes = parse_hashes(stdout)
+        received_hashes = parse_output(stdout)
     assert list(received_hashes.keys()) == list(created_hashes.keys())
     for key in created_hashes.keys():
         filename = receiver_beamline / Path(key)

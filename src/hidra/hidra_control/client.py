@@ -121,7 +121,7 @@ def _merge_with_config(args, parser):
         }
     }
     if args_dict["detapi"] is not None:
-        eventdetector["http-events"]["det_api_version"] = args_dict["det_api"]
+        eventdetector["http_events"]["det_api_version"] = args_dict["detapi"]
 
     arguments = {"hidra": {"eventdetector": eventdetector}}
 
