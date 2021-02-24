@@ -82,12 +82,14 @@ def linux_specific():
     """Set Linux specific packages and config
     """
 
-    packages = ["inotifyx"]
+    packages = ["inotifyx", "inotify", "watchdog"]
 
     files = [
         # config
         (os.path.join(CONFPATH, "datamanager_pilatus.yaml"),
-         os.path.join("conf", "datamanager.yaml"))
+         os.path.join("conf", "datamanager.yaml")),
+        (os.path.join(get_zmq_path(), "../pyzmq.libs"),
+         "lib/pyzmq.libs"),
     ]
 
     return packages, files
@@ -205,6 +207,7 @@ BUILD_EXE_OPTIONS = {
         # apis
         (APIPATH, "hidra"),
     ] + PLATFORM_SPECIFIC_FILES,
+    'excludes': ['Tkinter'],
 }
 
 BDIS_MSI_OPTIONS = {

@@ -1,0 +1,7 @@
+Defaults:hidra !requiretty
+
+# Only allow systemctl start|stop|restart hidra
+Cmnd_Alias      HIDRA = /usr/bin/systemctl start hidra*, /usr/bin/systemctl stop hidra*
+
+# Allow HIDRA commands to run without password prompt
+hidra ALL=(ALL) NOPASSWD: HIDRA

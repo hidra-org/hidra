@@ -1,0 +1,17 @@
+FROM debian:10
+
+COPY *.deb /debs/
+
+RUN apt update && apt install -y systemd python-watchdog /debs/*
+
+# setup systemctl-replacement-script
+COPY systemctl.py /bin/systemctl
+RUN chmod +x /bin/systemctl
+
+COPY datamanager_p00.yaml /conf/datamanager_p00.yaml
+
+ARG user_uid
+
+RUN adduser --system --uid $user_uid hidra
+
+WORKDIR /hidra

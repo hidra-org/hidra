@@ -1,0 +1,10 @@
+future
+pyzmq
+logutils
+ldap3
+pyyaml
+inotifyx
+inotify
+watchdog
+pathlib2
+setproctitle

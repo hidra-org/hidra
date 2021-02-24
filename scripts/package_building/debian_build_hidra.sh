@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -uex
+
 DEFAULT_VERSION=9
 DEFAULT_NAME=stretch
 
@@ -13,6 +15,11 @@ fix_debian_version()
     then
         set_package_release=10
         set_standards_version=4.4.0
+    # debian 9
+    elif [ "$DEBIAN_VERSION" == "9" ]
+    then
+        set_package_release=$default_release
+        set_standards_version=4.1.4
     # debian 8
     elif [ "$DEBIAN_VERSION" == "8" ]
     then
@@ -89,11 +96,18 @@ download_hidra()
     if [ "$HIDRA_LOCATION" != "" ]; then
         printf "Copy hidra from $HIDRA_LOCATION\n"
         # local directory can contain unnecessary data or files
-        rsync -av --quiet "$HIDRA_LOCATION" "$MAPPED_DIR" \
-            --exclude .git \
-            --exclude data \
-            --exclude virtualenvs \
-            --exclude venv
+        git clone "$HIDRA_LOCATION" "$MAPPED_DIR"/hidra
+
+        pushd "$MAPPED_DIR"/hidra
+        if git show-ref --verify --quiet refs/remotes/origin/local_patches; then
+            # a branch named local_patches exists locally
+            # see https://stackoverflow.com/q/5167957
+            CURRENT_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
+            git checkout local_patches
+            git config user.email "tim.schoof@desy.de" && git config user.name "Tim Schoof"
+            git rebase "${CURRENT_BRANCH}"
+        fi
+        popd
         return
     fi
 
@@ -202,6 +216,7 @@ main()
     get_hidra_version
 
     MAPPED_DIR="/tmp/hidra_builds/debian${DEBIAN_VERSION}/${HIDRA_VERSION}"
+    rm -rf "$MAPPED_DIR"
 
     echo "Create packages for hidra tag $TAG for version $HIDRA_VERSION"
 
@@ -225,7 +240,14 @@ main()
     #docker rmi "${DOCKER_IMAGE}"
     rm -rf "$MAPPED_DIR/hidra"
 
-    echo "Debian ${DEBIAN_VERSION} packages can be found in ${MAPPED_DIR}"
+    if [ "$HIDRA_LOCATION" != "" ]; then
+        build_dir="$HIDRA_LOCATION"/build/debian${DEBIAN_VERSION}/${HIDRA_VERSION}
+        mkdir -p $build_dir
+        cp "$MAPPED_DIR"/* $build_dir
+        echo "Debian ${DEBIAN_VERSION} packages can be found in ${build_dir}"
+    else
+        echo "Debian ${DEBIAN_VERSION} packages can be found in ${MAPPED_DIR}"
+    fi
 }
 
 main "$@"

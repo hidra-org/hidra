@@ -137,3 +137,6 @@ dmypy.json
 
 # Virtual studio code
 .vscode/
+
+# Vagrant
+.vagrant
