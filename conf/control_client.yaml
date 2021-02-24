@@ -13,7 +13,7 @@ hidra:
             history_size: 2000
     datafetcher:
         # Flag describing if the data should be stored on the filesystem
-        store_data: False
+        store_data: True
         # Should the files be removed from the source. Options are the same as
         # documented in the datamanager.yaml:
         # False, True, stop_on_error, with_confirmation.
@@ -21,7 +21,7 @@ hidra:
         # data stream is configured. This currently cannot be done from the
         # client side but only on the serer side and by default is set to False.
         # Thus these behave the same as using option True.
-        remove_data: False
+        remove_data: True
     # default whitelist: all hosts contained in the beamline netgroup
     # to change that set whitelist here, e.g.
     #general:
