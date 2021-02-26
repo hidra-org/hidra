@@ -548,7 +548,7 @@ def _read_status_systemd(service, log):
             info
     """
 
-    cmd = ["systemctl", "status", service]
+    cmd = ["systemctl", "show", service]
 
     try:
         proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
@@ -563,7 +563,7 @@ def _read_status_systemd(service, log):
 
     service_regex = r"Loaded:.*\/(.*service);"
     status_regex = r"Active:(.*) since (.*);(.*)"
-    pid_regex = r"Main PID: ([0-9]*)"
+    pid_regex = r"MainPID=([0-9]*)"
     message_regex = r".*datamanager.py\[[0-9]*\]:(.*)"
 
     service_status = {
