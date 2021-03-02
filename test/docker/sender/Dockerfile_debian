@@ -1,6 +1,6 @@
 FROM debian:9
 
-COPY *.deb /debs/
+COPY *deb9*.deb /debs/
 
 RUN apt update && apt install -y systemd python-watchdog /debs/*
 
