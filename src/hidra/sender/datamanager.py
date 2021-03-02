@@ -558,20 +558,6 @@ class DataManager(Base):
             config (dict): All the configuration set either via config file or
                            command line parameter.
         """
-
-        frozen_not_win = (
-            hasattr(sys, "frozen") and not sys.platform.startswith("win")
-        )
-        if (sys.version_info.major >= 3 and sys.version_info.minor >= 4
-                and not frozen_not_win):
-            # only availab since 3.4
-            # and cannot be used for non win systems when freeze3 is used due
-            # to a bug in multiprocessing.freeze_support()
-            # https://bugs.python.org/issue32146
-            multiprocessing.set_start_method('spawn')
-
-        self.stop_request = multiprocessing.Event()
-
         self.localhost = "127.0.0.1"
         self.current_pid = os.getpid()
 
@@ -592,6 +578,8 @@ class DataManager(Base):
         # has to be done before logging is setup because otherwise the logfile
         # belongs to the wrong user
         user_info, user_was_changed = utils.change_user(config_gen)
+
+        self.stop_request = multiprocessing.Event()
 
         # set up logging
         utils.check_writable(config_gen["log_file"])
@@ -1133,6 +1121,16 @@ def main():
 
     # see https://docs.python.org/2/library/multiprocessing.html#windows
     multiprocessing.freeze_support()
+    frozen_not_win = (
+        hasattr(sys, "frozen") and not sys.platform.startswith("win")
+    )
+    if (sys.version_info.major >= 3 and sys.version_info.minor >= 4
+            and not frozen_not_win):
+        # only availab since 3.4
+        # and cannot be used for non win systems when freeze3 is used due
+        # to a bug in multiprocessing.freeze_support()
+        # https://bugs.python.org/issue32146
+        multiprocessing.set_start_method('spawn')
 
     sender = None  # pylint: disable=invalid-name
     try:

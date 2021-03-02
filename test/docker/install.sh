@@ -39,7 +39,7 @@ docker-compose up --build -d
 
 # setup receiver
 docker-compose exec receiver yum install -y \
-    build/centos7/${HIDRA_VERSION}*/rpmbuild/RPMS/noarch/python2-hidra-${HIDRA_VERSION}*-?.el7.noarch.rpm \
+    build/centos7/${HIDRA_VERSION}*/rpmbuild/RPMS/noarch/python3-hidra-${HIDRA_VERSION}*-?.el7.noarch.rpm \
     build/centos7/${HIDRA_VERSION}*/rpmbuild/RPMS/noarch/hidra-${HIDRA_VERSION}*-?.el7.noarch.rpm
 
 docker-compose exec receiver bash /scripts/post_install.sh
@@ -123,7 +123,7 @@ chmod -R 777 ${HIDRA_TESTDIR}/sender-suse/ramdisk
 
 # setup control client
 docker-compose exec control-client yum install -y \
-    build/centos7/${HIDRA_VERSION}*/rpmbuild/RPMS/noarch/python2-hidra-${HIDRA_VERSION}*-?.el7.noarch.rpm \
+    build/centos7/${HIDRA_VERSION}*/rpmbuild/RPMS/noarch/python3-hidra-${HIDRA_VERSION}*-?.el7.noarch.rpm \
     build/centos7/${HIDRA_VERSION}*/rpmbuild/RPMS/noarch/hidra-control-client-${HIDRA_VERSION}*-?.el7.noarch.rpm
 
 
