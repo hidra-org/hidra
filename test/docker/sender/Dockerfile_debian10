@@ -1,8 +1,8 @@
 FROM debian:10
 
-COPY *.deb /debs/
+COPY *deb10*.deb /debs/
 
-RUN apt update && apt install -y systemd python-watchdog /debs/*
+RUN apt update && apt install -y systemd python3-watchdog /debs/*
 
 # setup systemctl-replacement-script
 COPY systemctl.py /bin/systemctl

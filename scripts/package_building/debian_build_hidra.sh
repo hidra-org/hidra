@@ -227,7 +227,7 @@ main()
     cd "${MAPPED_DIR}" || exit 1
     download_hidra
 
-    mv hidra/package/debian .
+    mv hidra/package/debian${DEBIAN_VERSION} ./debian
     fix_debian_version
     tar czf "hidra_${HIDRA_VERSION}.orig.tar.gz" hidra
     # required for the debian pacakge building to work
