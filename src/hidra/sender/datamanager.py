@@ -58,15 +58,6 @@ except ImportError:
 
 import setproctitle
 
-# to make windows freeze work (cx_Freeze 5.x)
-try:
-    CURRENT_DIR = os.path.dirname(os.path.realpath(__file__))
-except NameError:
-    CURRENT_DIR = os.path.dirname(os.path.realpath(sys.argv[0]))
-
-if CURRENT_DIR not in sys.path:
-    sys.path.insert(0, CURRENT_DIR)
-
 # pylint: disable=wrong-import-position
 import hidra.utils as utils  # noqa E402
 from hidra import __version__  # noqa E402
@@ -77,15 +68,6 @@ from signalhandler import run_signalhandler  # noqa E402
 from taskprovider import run_taskprovider  # noqa E402
 from datadispatcher import run_datadispatcher  # noqa E402
 from statserver import run_statserver  # noqa E402
-
-from _environment import BASE_DIR  # noqa E402 # pylint: disable=unused-import
-
-try:
-    import hidra.conf  # pylint: disable=ungrouped-imports
-    CONFIG_DIR = hidra.conf.__path__[0]  # pylint: disable=no-member
-except ImportError:
-    # when using the git repo
-    CONFIG_DIR = os.path.join(BASE_DIR, "conf")
 
 __author__ = 'Manuela Kuhn <manuela.kuhn@desy.de>'
 
