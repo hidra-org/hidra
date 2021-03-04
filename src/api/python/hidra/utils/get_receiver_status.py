@@ -99,7 +99,7 @@ def main():
     print("Checking for service hidra receiver on", host, ": ", end="")
     try:
         status = control.get_status()
-        if status == ["OK"]:
+        if status == [b"OK"]:
             print(CGREEN + "running." + CEND)
         else:
             print(CYELLOW +
