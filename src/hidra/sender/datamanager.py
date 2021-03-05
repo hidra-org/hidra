@@ -576,6 +576,11 @@ class DataManager(Base):
 
         self.log.info("DataManager started (PID %s).", self.current_pid)
 
+        if (sys.version_info.major >= 3 and sys.version_info.minor >= 4):
+            self.log.debug(
+                "Using multiprocessing start method '%s'",
+                multiprocessing.get_start_method())
+
         signal.signal(signal.SIGTERM, self.signal_term_handler)
 
         self.use_cleaner = (
@@ -1097,22 +1102,55 @@ class DataManager(Base):
         self.stop()
 
 
+# copied from https://github.com/pyinstaller/pyinstaller/blob/93285ece5a02932c6dac8f018bf107e7618d7d3c/PyInstaller/hooks/rthooks/pyi_rth_multiprocessing.py#L24  # noqa
+def _freeze_support():
+    import multiprocessing.spawn as spawn
+    from subprocess import _args_from_interpreter_flags
+    # we want to catch the two processes that are spawned by the
+    # multiprocessing code:
+    # - the semaphore tracker, which cleans up named semaphores in
+    #   the spawn multiprocessing mode
+    # - the fork server, which keeps track of worker processes in
+    #   forkserver mode.
+    # both of these processes are started by spawning a new copy of the
+    # running executable, passing it the flags from
+    # _args_from_interpreter_flags and then "-c" and an import statement.
+    # look for those flags and the import statement, then exec() the
+    # code ourselves.
+
+    if (len(sys.argv) >= 2
+            and sys.argv[-2] == '-c'
+            and sys.argv[-1].startswith((
+                'from multiprocessing.semaphore_tracker import main',  # Py<3.8
+                'from multiprocessing.resource_tracker import main',  # Py>=3.8
+                'from multiprocessing.forkserver import main'))
+            and set(sys.argv[1:-2]) == set(_args_from_interpreter_flags())):
+        exec(sys.argv[-1])
+        sys.exit()
+
+    if spawn.is_forking(sys.argv):
+        kwds = {}
+        for arg in sys.argv[2:]:
+            name, value = arg.split('=')
+            if value == 'None':
+                kwds[name] = None
+            else:
+                kwds[name] = int(value)
+        spawn.spawn_main(**kwds)
+        sys.exit()
+
+
 def main():
     """Running the datamanager.
     """
-
-    # see https://docs.python.org/2/library/multiprocessing.html#windows
-    multiprocessing.freeze_support()
-    frozen_not_win = (
-        hasattr(sys, "frozen") and not sys.platform.startswith("win")
-    )
-    if (sys.version_info.major >= 3 and sys.version_info.minor >= 4
-            and not frozen_not_win):
-        # only availab since 3.4
-        # and cannot be used for non win systems when freeze3 is used due
-        # to a bug in multiprocessing.freeze_support()
-        # https://bugs.python.org/issue32146
+    if (sys.version_info.major >= 3 and sys.version_info.minor >= 4):
+        # only availab since 3.4 A custom implementation copied from
+        #  PyInstaller is used due to a bug in multiprocessing.freeze_support()
+        # see https://bugs.python.org/issue32146
+        _freeze_support()
         multiprocessing.set_start_method('spawn')
+    else:
+        multiprocessing.freeze_support()
 
     sender = None  # pylint: disable=invalid-name
     try:
