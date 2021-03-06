@@ -408,8 +408,8 @@ def change_user(config):
         # set supplemental gids
         os.initgroups(config["username"], user_info.pw_gid)
 
-        os.setegid(user_info.pw_gid)
-        os.seteuid(user_info.pw_uid)
+        os.setgid(user_info.pw_gid)
+        os.setuid(user_info.pw_uid)
     except AttributeError:
         # on windows (user change is not possible)
         user_info = start_user
