@@ -128,9 +128,15 @@ class EventStore(object):
              A list of events.
         """
         with self.cond:
-            # If blocking is true, always return at least one event
-            while blocking and len(self.events) == 0:
+            # If blocking is true, always return at least one event except the
+            # timeout is reached
+            if blocking and len(self.events) == 0:
                 self.cond.wait(timeout)
+            # Here, either we got notified or the timeout was reached. In any
+            # case, we hold the lock.
+            # In case of a timeout, there might be a tiny chance that
+            # len(self.events) > 0, so we do nothing special and return
+            # whatever events there are
             events, self.events = self.events, []
 
         return events

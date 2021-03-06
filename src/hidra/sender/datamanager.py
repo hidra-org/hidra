@@ -1021,7 +1021,7 @@ class DataManager(Base):
             # check if the different processes where up and running (meaning
             # are able to receive signals) otherwise this would result in
             # hanging processes (zmq slow joiner problem)
-            for i in range(5):
+            for i in range(10):
                 if self.check_hanging(log=False):
                     self.log.debug("Waiting for processes to finish, "
                                    "resending 'EXIT' signal (try %s)", i)
