@@ -82,7 +82,7 @@ def linux_specific():
     """Set Linux specific packages and config
     """
 
-    packages = ["inotify", "watchdog"]
+    packages = ["inotify", "watchdog", "inotifyx"]
 
     files = [
         # config

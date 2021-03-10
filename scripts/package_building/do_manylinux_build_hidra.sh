@@ -18,6 +18,16 @@ fi
 PYBIN=/opt/python/cp37-cp37m/bin/python
 $PYBIN -m pip install cx_freeze
 $PYBIN -m pip install -r requirements.txt
+
+# build inotifyx
+git clone https://github.com/hidra-org/hidra-dependencies.git
+pushd hidra-dependencies/inotifyx
+    patch -ruN -p1 -d inotifyx-0.2.2 < 0001-python3-compatibility.patch
+    patch -ruN -p1 -d inotifyx-0.2.2 < 0002-update-C-binding-for-python3.patch
+    $PYBIN -m pip install ./inotifyx-0.2.2
+popd
+
+
 $PYBIN freeze_setup.py build
 
 ## set rpath to fix library paths (old rpath is "${ORIGIN}:${ORIGIN}/../lib")
