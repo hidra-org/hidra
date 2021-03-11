@@ -10,7 +10,7 @@ Homepage: https://github.com/hidra-org/hidra
 
 Package: hidra
 Architecture: any
-Depends: python3-hidra (= ${binary:Version}), python3, systemd, python3-inotify (>= 0.2.10), python3-setproctitle, python3-future
+Depends: python3-hidra (= ${binary:Version}), python3, systemd, python3-inotifyx (>= 0.2.2), python3-setproctitle, python3-future
 Description: High performance data multiplexing tool
  HiDRA is a generic tool set for high performance data multiplexing
  with different qualities of service and is based on Python and ZeroMQ.

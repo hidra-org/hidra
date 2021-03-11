@@ -276,10 +276,6 @@ def eventdetector_type(request):
 
 @pytest.fixture(scope="module")
 def stopped_sender_instance(sender_type, eventdetector_type):
-    if (
-            sender_type in ["sender-debian10"]
-            and eventdetector_type == "inotifyx_events"):
-        pytest.skip()
     stop_sender(sender_type)
     return {
         "sender_type": sender_type, "eventdetector_type": eventdetector_type}
