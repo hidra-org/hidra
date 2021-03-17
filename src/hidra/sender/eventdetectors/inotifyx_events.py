@@ -391,19 +391,17 @@ class EventDetector(EventDetectorBase):
                     # walked to get catch this misses
                     # http://stackoverflow.com/questions/15806488/
                     #        inotify-missing-events
-                    traversed_path = dirname
-                    for _, directories, files in os.walk(dirname):
+                    for dirpath, directories, files in os.walk(dirname):
                         # Add the found dirs to the list for the inotify-watch
                         for dname in directories:
-                            traversed_path = os.path.join(traversed_path,
-                                                          dname)
+                            subdir = os.path.join(dirpath, dname)
                             watch_descriptor = inotifyx.add_watch(
                                 self.file_descriptor,
-                                traversed_path
+                                subdir
                             )
-                            self.wd_to_path[watch_descriptor] = traversed_path
+                            self.wd_to_path[watch_descriptor] = subdir
                             self.log.info("Added new subdirectory to watch: "
-                                          "%s", traversed_path)
+                                          "%s", subdir)
                         self.log.debug("files: %s", files)
 
                         for filename in files:
@@ -416,7 +414,7 @@ class EventDetector(EventDetectorBase):
                                                parts)
                                 continue
 
-                            event_message = get_event_message(path,
+                            event_message = get_event_message(dirpath,
                                                               filename,
                                                               self.paths)
                             self.log.debug("event_message: %s", event_message)

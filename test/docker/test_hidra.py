@@ -5,6 +5,7 @@ import hashlib
 import os
 from pathlib import Path
 import re
+import shutil
 import subprocess
 import time
 import pytest
@@ -217,6 +218,16 @@ def stop_sender(sender_type):
     return out
 
 
+def clean_ramdisk(sender_type):
+    ramdisk_path = hidra_testdir / sender_type / "ramdisk"
+    for child in ramdisk_path.glob('*'):
+        if child.is_file():
+            child.unlink()
+        else:
+            shutil.rmtree(str(child))
+    return ramdisk_path
+
+
 def start_sender(
         sender_type="sender-freeze", eventdetector_type="inotify_events"):
     senders = [
@@ -285,9 +296,10 @@ def stopped_sender_instance(sender_type, eventdetector_type):
 def sender_instance(stopped_sender_instance):
     sender_type = stopped_sender_instance["sender_type"]
     eventdetector_type = stopped_sender_instance["eventdetector_type"]
+    ramdisk_path = clean_ramdisk(sender_type)
     start_sender(
         sender_type=sender_type, eventdetector_type=eventdetector_type)
-    yield stopped_sender_instance
+    yield {**stopped_sender_instance, "ramdisk_path": ramdisk_path}
     out = stop_sender(sender_type)
     print(out.stdout)
     print(out.stderr)
@@ -419,9 +431,11 @@ def test_sender_status_running(sender_instance):
 
 def test_sender_file_writing(sender_instance):
     sender_type = sender_instance["sender_type"]
+    eventdetector_type = sender_instance["eventdetector_type"]
+    ramdisk_path = sender_instance["ramdisk_path"]
     filename = Path("current/raw/filewriting_{}_{}.txt".format(
-        sender_instance["sender_type"], sender_instance["eventdetector_type"]))
-    sender_path = hidra_testdir / sender_type / "ramdisk" / filename
+        sender_type, eventdetector_type))
+    sender_path = ramdisk_path / filename
     sender_path.write_text("hello world")
     receiver_path = receiver_beamline / filename
 
@@ -438,12 +452,11 @@ def test_sender_file_writing(sender_instance):
     sender_paths = []
     receiver_paths = []
     for i in range(100):
-        sender_type = sender_instance["sender_type"]
         filename = Path("current/raw/filewriting_{}_{}_{}.txt".format(
-            sender_instance["sender_type"],
-            sender_instance["eventdetector_type"],
+            sender_type,
+            eventdetector_type,
             i))
-        sender_path = hidra_testdir / sender_type / "ramdisk" / filename
+        sender_path = ramdisk_path / filename
         sender_path.write_text("hello world" + str(i))
         receiver_path = receiver_beamline / filename
         sender_paths.append(sender_path)
@@ -461,6 +474,30 @@ def test_sender_file_writing(sender_instance):
         # uid and gid are hard coded in receiver/Dockerfile
         assert stat.st_uid == 1234
         assert stat.st_gid == 1234
+
+
+def test_sender_file_writing_nested_subdir(sender_instance):
+    sender_type = sender_instance["sender_type"]
+    eventdetector_type = sender_instance["eventdetector_type"]
+    if eventdetector_type == "inotify_events":
+        # known to be broken
+        pytest.skip()
+    ramdisk_path = sender_instance["ramdisk_path"]
+    filename = Path("current/raw/nested/subdir/nested_file_{}_{}.txt".format(
+        sender_type, eventdetector_type))
+    sender_path = ramdisk_path / filename
+    sender_path.parent.mkdir(parents=True, exist_ok=True)
+    sender_path.write_text("hello world")
+    receiver_path = receiver_beamline / filename
+
+    # first file can take longer
+    assert wait_for(lambda: not sender_path.is_file(), timeout=60)
+    assert wait_for(receiver_path.is_file)
+    assert wait_for(lambda: receiver_path.read_text() == "hello world")
+    stat = receiver_path.stat()
+    # uid and gid are hard coded in receiver/Dockerfile
+    assert stat.st_uid == 1234
+    assert stat.st_gid == 1234
 
 
 def test_receiver_groups():

@@ -155,7 +155,7 @@ eventdetector:
 
         # Flag describing if the subdirectories should be created if they do
         # not exist.
-        create_fix_subdirs: False
+        create_fix_subdirs: True
 
         # Event type of files (options are: IN_CLOSE_WRITE, IN_MOVED_TO, ...)
         # and the formats to be monitored, files in an other format will be be
