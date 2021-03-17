@@ -82,14 +82,15 @@ def linux_specific():
     """Set Linux specific packages and config
     """
 
-    packages = ["inotifyx", "inotify", "watchdog"]
+    packages = ["inotify", "watchdog", "inotifyx"]
 
     files = [
         # config
         (os.path.join(CONFPATH, "datamanager_pilatus.yaml"),
          os.path.join("conf", "datamanager.yaml")),
-        (os.path.join(get_zmq_path(), "../pyzmq.libs"),
-         "lib/pyzmq.libs"),
+        # (os.path.join(get_zmq_path(), "../pyzmq.libs"),
+        # "lib/pyzmq.libs"),
+        ("/usr/lib64/libffi.so.5", "lib/libffi.so.5"),
     ]
 
     return packages, files
@@ -127,7 +128,7 @@ def get_environment():
         with open(exe_env, "w") as f_exe:
             for line in f:
                 if line.startswith("BASE_DIR = os.path.dirname"):
-                    f_exe.write("BASE_DIR = CURRENT_DIR\n")
+                    f_exe.write("BASE_DIR = os.path.dirname(CURRENT_DIR)\n")
                 elif line.startswith("API_DIR = os.path.join"):
                     f_exe.write("API_DIR = BASE_DIR\n")
                 else:
@@ -156,7 +157,10 @@ if sys.version_info.major >= 3:
         "yaml",
         # otherwise ldap3 cannot be found
         # ModuleNotFoundError: No module named 'ldap3'
-        "ldap3"
+        "ldap3",
+        "zmq",
+        "configparser",
+        "logging",
     ]
 else:
     VERSION_SPECIFIC_PACKAGES = [
@@ -191,21 +195,22 @@ BUILD_EXE_OPTIONS = {
         (get_init(), "hidra.sh"),
         (os.path.join(CONFPATH, "base_sender.yaml"),
          os.path.join("conf", "base_sender.yaml")),
-        (os.path.join(SENDERPATH, "__init__.py"), "__init__.py"),
-        (get_environment(), "_environment.py"),
-        (os.path.join(SENDERPATH, "base_class.py"), "base_class.py"),
-        (os.path.join(SENDERPATH, "taskprovider.py"), "taskprovider.py"),
-        (os.path.join(SENDERPATH, "signalhandler.py"), "signalhandler.py"),
-        (os.path.join(SENDERPATH, "datadispatcher.py"), "datadispatcher.py"),
-        (os.path.join(SENDERPATH, "statserver.py"), "statserver.py"),
+        (os.path.join(SENDERPATH, "__init__.py"), "lib/__init__.py"),
+        (get_environment(), "lib/_environment.py"),
+        (os.path.join(SENDERPATH, "base_class.py"), "lib/base_class.py"),
+        (os.path.join(SENDERPATH, "taskprovider.py"), "lib/taskprovider.py"),
+        (os.path.join(SENDERPATH, "signalhandler.py"), "lib/signalhandler.py"),
+        (os.path.join(
+            SENDERPATH, "datadispatcher.py"), "lib/datadispatcher.py"),
+        (os.path.join(SENDERPATH, "statserver.py"), "lib/statserver.py"),
         # only for readability (not for actual code)
         (os.path.join(UTILSPATH, "_version.py"), "_version.py"),
         # event detectors
-        (os.path.join(SENDERPATH, "eventdetectors"), "eventdetectors"),
+        (os.path.join(SENDERPATH, "eventdetectors"), "lib/eventdetectors"),
         # data fetchers
-        (os.path.join(SENDERPATH, "datafetchers"), "datafetchers"),
+        (os.path.join(SENDERPATH, "datafetchers"), "lib/datafetchers"),
         # apis
-        (APIPATH, "hidra"),
+        (APIPATH, "lib/hidra"),
     ] + PLATFORM_SPECIFIC_FILES,
     'excludes': ['Tkinter'],
 }

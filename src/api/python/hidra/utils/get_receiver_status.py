@@ -31,20 +31,9 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import argparse
-import os
 import sys
 import traceback
 
-# to make windows/suse10 freeze work (cx_Freeze 5.x)
-try:
-    CURRENT_DIR = os.path.dirname(os.path.realpath(__file__))
-except NameError:
-    CURRENT_DIR = os.path.dirname(os.path.realpath(sys.argv[0]))
-
-if CURRENT_DIR not in sys.path:
-    sys.path.insert(0, CURRENT_DIR)
-
-from _environment import BASE_DIR  # noqa E402  # pylint: disable=wrong-import-position,unused-import
 from hidra.control import ReceiverControl  # noqa E402  # pylint: disable=wrong-import-position
 from hidra import CommunicationFailed  # noqa E402  # pylint: disable=wrong-import-position
 import hidra.utils as utils  # noqa E402  # pylint: disable=wrong-import-position
@@ -110,7 +99,7 @@ def main():
     print("Checking for service hidra receiver on", host, ": ", end="")
     try:
         status = control.get_status()
-        if status == ["OK"]:
+        if status == [b"OK"]:
             print(CGREEN + "running." + CEND)
         else:
             print(CYELLOW +

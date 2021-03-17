@@ -32,19 +32,7 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import argparse
-import os
-import sys
 
-# to make windows freeze work (cx_Freeze 5.x)
-try:
-    CURRENT_DIR = os.path.dirname(os.path.realpath(__file__))
-except NameError:
-    CURRENT_DIR = os.path.dirname(os.path.realpath(sys.argv[0]))
-
-if CURRENT_DIR not in sys.path:
-    sys.path.insert(0, CURRENT_DIR)
-
-from _environment import BASE_DIR  # noqa E402  # pylint: disable=wrong-import-position,unused-import
 import hidra.utils as utils  # noqa E402  # pylint: disable=wrong-import-position
 
 

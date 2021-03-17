@@ -325,7 +325,7 @@ if [ -f /etc/redhat-release ] || [ -f /etc/centos-release ] ; then
 
         TIMEOUT=0
 #        while checkpid $HIDRA_PID && [ $TIMEOUT -lt 30 ] ; do
-        while checkpid "$HIDRA_PID" && [ $TIMEOUT -lt 5 ] ; do
+        while checkpid "$HIDRA_PID" && [ $TIMEOUT -lt 10 ] ; do
             sleep 1
             ((TIMEOUT=TIMEOUT+1))
         done
@@ -580,7 +580,7 @@ elif [ -f /etc/SuSE-release ] ; then
 
         ## Stop daemon with killproc(8) and if this fails
         ## killproc sets the return value according to LSB
-        /sbin/killproc -TERM "$NAME"
+        /sbin/killproc -t 10 -TERM "$NAME"
 
         # Remember status and be verbose
         rc_status -v

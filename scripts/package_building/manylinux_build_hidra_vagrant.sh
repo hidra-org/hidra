@@ -12,7 +12,7 @@ HIDRA_DIR=$(pwd)/../..
 
 get_hidra_version
 
-filename=hidra-${HIDRA_VERSION}-x86_64-2.7-manylinux1.tar.gz
+filename=hidra-${HIDRA_VERSION}-x86_64-3.7-manylinux1.tar.gz
 
 mkdir -p ${HIDRA_DIR}/build/freeze
 

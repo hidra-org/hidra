@@ -15,9 +15,19 @@ if git show-ref --verify --quiet refs/heads/local_patches; then
 fi
 
 # freeze
-PYBIN=/opt/python/cp27-cp27mu/bin/python
-$PYBIN -m pip install cx_freeze==5.1.1
+PYBIN=/opt/python/cp37-cp37m/bin/python
+$PYBIN -m pip install cx_freeze
 $PYBIN -m pip install -r requirements.txt
+
+# build inotifyx
+git clone https://github.com/hidra-org/hidra-dependencies.git
+pushd hidra-dependencies/inotifyx
+    patch -ruN -p1 -d inotifyx-0.2.2 < 0001-python3-compatibility.patch
+    patch -ruN -p1 -d inotifyx-0.2.2 < 0002-update-C-binding-for-python3.patch
+    $PYBIN -m pip install ./inotifyx-0.2.2
+popd
+
+
 $PYBIN freeze_setup.py build
 
 ## set rpath to fix library paths (old rpath is "${ORIGIN}:${ORIGIN}/../lib")
@@ -26,7 +36,7 @@ $PYBIN freeze_setup.py build
 # done
 # zlib.so is dynamically linked against libpython but cx_freeze does not care
 # set rpath tp workaround this
-/usr/local/bin/patchelf --set-rpath '${ORIGIN}' build/exe.linux-x86_64-2.7/lib/zlib.so
+# /usr/local/bin/patchelf --set-rpath '${ORIGIN}' build/exe.linux-x86_64-3.7/lib/zlib.so
 
 if git show-ref --verify --quiet refs/heads/local_patches; then
     git checkout "${CURRENT_BRANCH}"
@@ -39,8 +49,8 @@ HIDRA_DIR=$(pwd)
 get_hidra_version
 
 rm -rf ${HIDRA_DIR}/build/hidra
-mv ${HIDRA_DIR}/build/exe.linux-x86_64-2.7 ${HIDRA_DIR}/build/hidra
+mv ${HIDRA_DIR}/build/exe.linux-x86_64-3.7 ${HIDRA_DIR}/build/hidra
 mkdir -p ${HIDRA_DIR}/build/freeze
 pushd ${HIDRA_DIR}/build
-tar -czf freeze/hidra-${HIDRA_VERSION}-x86_64-2.7-manylinux1.tar.gz hidra
+tar -czf freeze/hidra-${HIDRA_VERSION}-x86_64-3.7-manylinux1.tar.gz hidra
 popd
