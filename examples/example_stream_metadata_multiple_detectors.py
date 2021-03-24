@@ -55,9 +55,7 @@ def main():
 
     arguments = parser.parse_args()
 
-#    targets = [arguments.target_host, "50101", 0]
-    targets = [[arguments.target_host, "50101", 0, ".*(tif|cbf)$"]]
-#    targets = [[arguments.target_host, "50101", 0, [".tif", ".cbf"]]]
+    targets = [[arguments.target_host, "50101", 1, ".*(tif|cbf)$"]]
 
     print("\n==== TEST: Stream all files ====\n")
 
@@ -69,20 +67,19 @@ def main():
     query.initiate(targets)
 
     query.start()
+    try:
+        while True:
+            try:
+                print("waiting to get metadata")
+                [metadata, _] = query.get()
+            except Exception:
+                break
 
-    while True:
-        try:
-            print("waiting to get metadata")
-            [metadata, _] = query.get()
-        except Exception:
-            break
-
-        print()
-        print("metadata", metadata["filename"])
-    #    print ("data", str(data)[:10])
-        print()
-
-    query.stop()
+            print()
+            print("metadata", metadata["filename"])
+            print()
+    finally:
+        query.stop()
 
     print("\n==== TEST END: Stream all files ====\n")
 
