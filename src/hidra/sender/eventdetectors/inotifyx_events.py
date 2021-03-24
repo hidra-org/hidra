@@ -476,19 +476,22 @@ class EventDetector(EventDetectorBase):
             self.cleanup_thread.stop()
 
         try:
-            for watch_descriptor in self.wd_to_path:
+            for watch_descriptor, watch_path in self.wd_to_path.items():
                 try:
                     inotifyx.rm_watch(
                         self.file_descriptor,
                         watch_descriptor
                     )
                 except Exception:
-                    self.log.error("Unable to remove watch: %s",
-                                   watch_descriptor, exc_info=True)
+                    self.log.error("Unable to remove watch: %s for %s",
+                                   watch_descriptor, watch_path, exc_info=True)
+            self.wd_to_path = {}
         finally:
-            try:
-                os.close(self.file_descriptor)
-            except OSError:
-                self.log.error("Unable to close file descriptor")
+            if self.file_descriptor is not None:
+                try:
+                    os.close(self.file_descriptor)
+                except OSError:
+                    self.log.error("Unable to close file descriptor")
 
-        common_stop(self.config, self.log)
+                common_stop(self.config, self.log)
+                self.file_descriptor = None
