@@ -259,7 +259,7 @@ def start_sender(
         sender_type,
         ["timeout", "10", "tail", "-f", "/var/log/hidra/datamanager_p00.log"])
     success, output = wait_for_output(
-        proc.stdout, "Waiting for new job", timeout=10)
+        proc.stdout, r".*Waiting for new job", timeout=10)
     proc.terminate()
     print("waiting for tail")
     comm = proc.communicate(timeout=5)
