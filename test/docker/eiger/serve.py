@@ -22,6 +22,7 @@ def update_index_file(filenames, api_version="1.8.0"):
     index_file = "filewriter/api/{}/files/index.html".format(
         api_version)
 
+    pathlib.Path(index_file).parent.mkdir(parents=True, exist_ok=True)
     with open(index_file, "w") as f:
         f.write(json.dumps(content))
 

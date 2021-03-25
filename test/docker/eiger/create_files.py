@@ -5,6 +5,7 @@ from __future__ import unicode_literals
 import argparse
 import hashlib
 import os
+import tempfile
 
 
 def get_hash(filename):
@@ -16,11 +17,20 @@ def get_hash(filename):
 
 
 def create_file(filename, size=1000000):
-    os.makedirs(os.path.dirname(filename), exist_ok=True)
-    with open(filename, "wb") as f:
+    # write to a temporary file so that the server never sees incomplete files
+    # don't use /tmp because /webcontent is a volume and rename is not possible
+    # across file systems
+    os.makedirs("/webcontent/tmp", exist_ok=True)
+    tmp_fd, tmp_name = tempfile.mkstemp(dir="/webcontent/tmp")
+    with os.fdopen(tmp_fd, "wb") as f:
         f.write(os.urandom(size))
 
-    return get_hash(filename)
+    file_hash = get_hash(tmp_name)
+
+    os.makedirs(os.path.dirname(filename), exist_ok=True)
+    os.rename(tmp_name, filename)
+
+    return file_hash
 
 
 def create_files(n, size, path, prefix, ext="h5"):
