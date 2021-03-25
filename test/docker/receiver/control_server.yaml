@@ -44,6 +44,7 @@ hidraconfig_static:
                 - commissioning/raw
                 - commissioning/scratch_bl
                 - local
+                - non_existent/raw
             # monitored_events:
             #     IN_CLOSE_WRITE :
             #         - .tif

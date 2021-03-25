@@ -337,6 +337,7 @@ class DataFetcher(DataFetcherBase):
                             log=self.log)
 
         sending_failed = False
+        self.config["remove_flag"] = False
 
         writer.open(metadata)
 
