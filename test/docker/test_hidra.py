@@ -228,6 +228,14 @@ def clean_ramdisk(sender_type):
     return ramdisk_path
 
 
+def clean_eiger_data():
+    eiger_data_path = hidra_testdir / Path("eiger/webcontent/data")
+    # eiger runs as root to be able to bind to port 80
+    # therefore we need to delete the file from inside the container
+    docker_run("eiger", ["rm", "-rf", "/webcontent/data"])
+    return eiger_data_path
+
+
 def start_sender(
         sender_type="sender-freeze", eventdetector_type="inotify_events"):
     senders = [
@@ -314,9 +322,10 @@ def stopped_eiger_instance():
     scope="module",
     params=["1.6.0", "1.8.0"])
 def eiger_instance(stopped_eiger_instance, request):
+    data_path = clean_eiger_data()
     detapi = request.param
     control_client("start", beamline="p00", det="eiger", detapi=detapi)
-    yield {"detapi": detapi}
+    yield {"detapi": detapi, "data_path": data_path}
     control_client("stop", beamline="p00", det="eiger")
 
 
@@ -397,6 +406,70 @@ def test_transfer_after_restart():
     for key in created_hashes.keys():
         filename = receiver_beamline / Path(key)
         assert filename.is_file()
+
+
+def test_control_eiger_storing_files_failed(eiger_instance):
+    eiger_data_path = eiger_instance["data_path"]
+    # store one file successfully for each datafetcher to trigger deletion bug
+    proc = docker_start(
+        "asap3-p00",
+        [
+            "timeout", "60", "tail", "-f", "-n", "0",
+            "/var/log/hidra/datamanager_p00_eiger.hidra.test.log"])
+
+    created_hashes_stored = create_eiger_files(
+        number=4, prefix="eiger_storing_files_failed_{}_stored-".format(
+            eiger_instance["detapi"]),
+        path="current/raw", ext="h5", size=10)
+
+    for source_file, hash in created_hashes_stored.items():
+        # check that the file transfer is complete
+        target_file = receiver_beamline / Path(source_file)
+        assert wait_for(target_file.is_file)
+        # check that the datamanager is ready and will not interfere with the
+        # output later
+        success, output = wait_for_output(
+            proc.stdout, r".*Waiting for new job", timeout=60)
+        print("output:", output)
+        assert success
+
+    proc.terminate()
+    stdout, stderr = proc.communicate(timeout=30)
+    assert stderr == ""
+    assert stdout == ""
+
+    # create a file in a non-existing directory
+    proc = docker_start(
+        "asap3-p00",
+        [
+            "timeout", "60", "tail", "-f", "-n", "0",
+            "/var/log/hidra/datamanager_p00_eiger.hidra.test.log"])
+
+    created_hashes = create_eiger_files(
+        number=1, prefix="eiger_storing_files_failed_{}-".format(
+            eiger_instance["detapi"]),
+        path="non_existent/raw", ext="h5", size=10)
+
+    for source_file, hash in created_hashes.items():
+        # check that indeed the file could not be stored
+        success, output = wait_for_output(
+            proc.stdout, r".*Exception:.*{}".format(source_file), timeout=60)
+        print("output:", output)
+        assert success
+        # check that the datamanager is ready
+        success, output = wait_for_output(
+            proc.stdout, r".*Waiting for new job", timeout=60)
+        print("output:", output)
+        assert success
+        # deletion might still need some time
+        time.sleep(2)
+        # check that file was not deleted nor attempted to be deleted
+        proc.terminate()
+        stdout, stderr = proc.communicate(timeout=30)
+        assert "Deleting file" not in output
+        assert "Deleting file" not in stdout
+        assert stderr == ""
+        assert (eiger_data_path / source_file).is_file()
 
 
 def test_sender_status_stopped(stopped_sender_instance):

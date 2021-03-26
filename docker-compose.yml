@@ -38,6 +38,8 @@ services:
         container_name: eiger
         hostname: eiger
         domainname: hidra.test
+        volumes:
+            - ${HIDRA_TESTDIR}/eiger/webcontent/:/webcontent
         networks:
             hidra:
                 aliases:
