@@ -101,14 +101,13 @@ class FileFilterSet:
         self.files_seen = set()
 
     def get_new_files(self, files_stored):
-        files_stored_set = set(files_stored)
-        new_files = files_stored_set - self.files_seen
-        self.files_seen = files_stored_set
-
         filtered_files = []
-        for file_obj in new_files:
-            if file_obj.startswith(self.fix_subdirs):
+        for file_obj in files_stored:
+            if (file_obj.startswith(self.fix_subdirs)
+                    and file_obj not in self.files_seen):
                 filtered_files.append(file_obj)
+
+        self.files_seen = set(files_stored)
 
         return filtered_files
 
