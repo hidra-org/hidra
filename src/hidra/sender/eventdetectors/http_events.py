@@ -58,7 +58,6 @@ import time
 import requests
 
 from eventdetectorbase import EventDetectorBase
-import hidra.utils as utils
 
 __author__ = ('Manuela Kuhn <manuela.kuhn@desy.de>',
               'Jan Garrevoet <jan.garrevoet@desy.de>')
@@ -123,7 +122,8 @@ class EventDetector(EventDetectorBase):
         # config
         self.check_config()
 
-        self.event_detector_impl = EventDetectorImpl(self.config, self.log)
+        self.event_detector_impl = create_eventdetector_impl(
+            **self.config, log=self.log)
 
     def get_new_event(self):
         """Implementation of the abstract method get_new_event.
@@ -136,59 +136,52 @@ class EventDetector(EventDetectorBase):
         pass
 
 
+def resolve_ip(ip):
+    return socket.gethostbyaddr(ip)[2][0]
+
+
+def create_eventdetector_impl(
+        det_ip, det_api_version, history_size, fix_subdirs, log,
+        file_writer_url=(
+            "http://{det_ip}/filewriter/api/{det_api_version}/files/"),
+        data_url="http://{det_ip}/data"):
+
+    det_ip = resolve_ip(det_ip)
+
+    file_writer_url = file_writer_url.format(
+        det_ip=det_ip, det_api_version=det_api_version)
+    data_url = data_url.format(det_ip=det_ip)
+
+    log.debug("Getting files from: %s", file_writer_url)
+
+    session = requests.session()
+    connection = HTTPConnection(session)
+
+    file_filter = FileFilter(fix_subdirs, history_size)
+
+    return EventDetectorImpl(
+        file_writer_url=file_writer_url,
+        data_url=data_url,
+        connection=connection,
+        file_filter=file_filter,
+        log=log)
+
+
 class EventDetectorImpl:
-    def __init__(self, config, log):
-        self.config = config
+    def __init__(
+            self, file_writer_url, data_url, connection, file_filter, log):
         self.log = log
 
         # time to sleep after detector returned emtpy file list
         self.sleep_time = 0.5
         # Enable specification via IP and DNS name
-        det_ip = socket.gethostbyaddr(self.config["det_ip"])[2][0]
-        self.file_writer_url = self._get_file_writer_url(det_ip)
-        self.data_url = self._get_data_url(det_ip)
 
-        self.connection = self._get_connection()
+        self.file_writer_url = file_writer_url
+        self.data_url = data_url
 
-        self.file_filter = self._get_file_filter()
+        self.connection = connection
 
-    def _get_file_writer_url(self, det_ip):
-        det_api_version = self.config["det_api_version"]
-        try:
-            file_writer_url = (
-                self.config["filewriter_url"]
-                .format(det_ip=det_ip,
-                        det_api_version=det_api_version)
-            )
-        except KeyError:
-            if "det_api_version" not in self.config:
-                raise utils.WrongConfiguration(
-                    "Either filewriter_uri or det_api_version have to be "
-                    "configured."
-                )
-
-            file_writer_url = (
-                "http://{}/filewriter/api/{}/files/"
-                .format(det_ip, det_api_version))
-
-        self.log.debug("Getting files from: %s", file_writer_url)
-        return file_writer_url
-
-    def _get_connection(self):
-        session = requests.session()
-        return HTTPConnection(session)
-
-    def _get_data_url(self, det_ip):
-        try:
-            data_url = self.config["datat_url"].format(det_ip=det_ip)
-        except KeyError:
-            data_url = "http://{}/data".format(det_ip)
-
-        return data_url
-
-    def _get_file_filter(self):
-        return FileFilter(
-            self.config["fix_subdirs"], self.config["history_size"])
+        self.file_filter = file_filter
 
     def get_new_event(self):
         """Implementation of the abstract method get_new_event.
