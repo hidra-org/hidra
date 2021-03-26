@@ -73,7 +73,7 @@ class HTTPConnection:
         return response.json()
 
 
-class FileFilter:
+class FileFilterDeque:
     def __init__(self, fix_subdirs, history_size):
         self.fix_subdirs = tuple(fix_subdirs)
         # history to prevent double events
@@ -92,6 +92,25 @@ class FileFilter:
                 new_files.append(file_obj)
 
         return new_files
+
+
+class FileFilterSet:
+    def __init__(self, fix_subdirs):
+        self.fix_subdirs = tuple(fix_subdirs)
+        # history to prevent double events
+        self.files_seen = set()
+
+    def get_new_files(self, files_stored):
+        files_stored_set = set(files_stored)
+        new_files = files_stored_set - self.files_seen
+        self.files_seen = files_stored_set
+
+        filtered_files = []
+        for file_obj in new_files:
+            if file_obj.startswith(self.fix_subdirs):
+                filtered_files.append(file_obj)
+
+        return filtered_files
 
 
 class EventDetector(EventDetectorBase):
@@ -157,7 +176,10 @@ def create_eventdetector_impl(
     session = requests.session()
     connection = HTTPConnection(session)
 
-    file_filter = FileFilter(fix_subdirs, history_size)
+    if history_size >= 0:
+        file_filter = FileFilterDeque(fix_subdirs, history_size)
+    else:
+        file_filter = FileFilterSet(fix_subdirs)
 
     return EventDetectorImpl(
         file_writer_url=file_writer_url,

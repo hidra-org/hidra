@@ -4,8 +4,8 @@ from unittest.mock import create_autospec, patch
 import pytest
 import hidra  # noqa
 from eventdetectors.http_events import (
-    EventDetectorImpl, create_eventdetector_impl, HTTPConnection, FileFilter,
-    resolve_ip)
+    EventDetectorImpl, create_eventdetector_impl, HTTPConnection,
+    FileFilterDeque, FileFilterSet, resolve_ip)
 
 fix_subdir = Path("current/raw")
 
@@ -33,6 +33,7 @@ def test_create_eventdetector_imp_full_dict():
     )
     eventdetector = create_eventdetector_impl(**config, log=log)
     assert eventdetector
+    assert isinstance(eventdetector.file_filter, FileFilterDeque)
 
 
 def test_create_eventdetector_imp_default_dict():
@@ -44,6 +45,19 @@ def test_create_eventdetector_imp_default_dict():
     )
     eventdetector = create_eventdetector_impl(**config, log=log)
     assert eventdetector
+    assert isinstance(eventdetector.file_filter, FileFilterDeque)
+
+
+def test_create_eventdetector_imp_negative_history_size():
+    config = dict(
+        det_ip="127.0.0.1",
+        det_api_version="1.8.0",
+        history_size=-1,
+        fix_subdirs=["current/raw"],
+    )
+    eventdetector = create_eventdetector_impl(**config, log=log)
+    assert eventdetector
+    assert isinstance(eventdetector.file_filter, FileFilterSet)
 
 
 @pytest.fixture
@@ -61,7 +75,12 @@ def connection():
 
 @pytest.fixture
 def file_filter():
-    return FileFilter(["current/raw"], 10)
+    return FileFilterDeque(["current/raw"], 10)
+
+
+@pytest.fixture
+def file_filter_set():
+    return FileFilterSet(["current/raw"])
 
 
 @pytest.fixture
@@ -153,9 +172,65 @@ def test_filter_seen_history_size(file_filter):
     assert ret == ["current/raw/filename0.ext", filename]
 
 
+def test_filter_set(file_filter_set):
+    files = ["current/raw/filename.ext"]
+    ret = file_filter_set.get_new_files(files)
+    assert ret == files
+
+
+def test_filter_multiple_files_set(file_filter_set):
+    files = ["current/raw/filename.ext", "current/raw/filename2.ext"]
+    ret = file_filter_set.get_new_files(files)
+    assert ret == files
+
+
+def test_filter_seen_files_set(file_filter_set):
+    files = ["current/raw/filename1.ext"]
+    ret = file_filter_set.get_new_files(files)
+    assert ret == files
+
+    files = ["current/raw/filename1.ext", "current/raw/filename2.ext"]
+    ret = file_filter_set.get_new_files(files)
+    assert ret == ["current/raw/filename2.ext"]
+
+    files = ["current/raw/filename2.ext", "current/raw/filename3.ext"]
+    ret = file_filter_set.get_new_files(files)
+    assert ret == ["current/raw/filename3.ext"]
+
+    files = [
+        "current/raw/filename1.ext", "current/raw/filename2.ext",
+        "current/raw/filename3.ext"]
+    ret = file_filter_set.get_new_files(files)
+    assert ret == ["current/raw/filename1.ext"]
+
+
+def test_filter_seen_files_reuse(file_filter_set):
+    files = ["current/raw/filename.ext"]
+    ret = file_filter_set.get_new_files(files)
+    assert ret == files
+
+    files = ["current/raw/filename.ext"]
+    ret = file_filter_set.get_new_files(files)
+    assert ret == []
+
+    files = []
+    ret = file_filter_set.get_new_files(files)
+    assert ret == files
+
+    files = ["current/raw/filename.ext"]
+    ret = file_filter_set.get_new_files(files)
+    assert ret == files
+
+
 def test_filter_not_in_subdir(file_filter):
     files = ["other_dir/filename.ext"]
     ret = file_filter.get_new_files(files)
+    assert ret == []
+
+
+def test_filter_not_in_subdir_set(file_filter_set):
+    files = ["other_dir/filename.ext"]
+    ret = file_filter_set.get_new_files(files)
     assert ret == []
 
 
