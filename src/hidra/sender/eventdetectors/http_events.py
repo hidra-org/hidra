@@ -142,7 +142,7 @@ class EventDetector(EventDetectorBase):
         self.check_config()
 
         self.event_detector_impl = create_eventdetector_impl(
-            **self.config, log=self.log)
+            log=self.log, **self.config)
 
     def get_new_event(self):
         """Implementation of the abstract method get_new_event.
