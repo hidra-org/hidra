@@ -33,7 +33,7 @@ asapo_producer:
     beamtime: string # optional
     beamtime_file_path: string  # needed if beamtime is not static
     beamtime_file_regex: string  # needed if beamtime is not static
-    stream: string  # optional
+    data_source: string  # optional
     token: string  # optional
     token_file: string  # needed if token is not static
     n_threads: int
@@ -47,11 +47,11 @@ Example config:
         endpoint: "asapo-services:8400"
         beamline: "my_beamline"
         beamtime: "asapo_test"
-        stream: "hidra_test"
+        data_source: "hidra_test"
         token: "KmUDdacgBzaOD3NIJvN1NmKGqWKtx0DK-NyPjdpeWkc="
         n_threads: 1
         ingest_mode: INGEST_MODE_TRANSFER_METADATA_ONLY
-        file_regex: '.*/(?P<stream>.*)/scan_(?P<scan_id>.*)/'
+        file_regex: '.*/(?P<data_source>.*)/scan_(?P<scan_id>.*)/'
                     '(?P<file_idx_in_scan>.*).tif'
         ignore_regex: '.*/.*.metadata$'
 """
@@ -92,7 +92,7 @@ class Plugin(object):
         self.config = plugin_config
         self.required_parameter = []
 
-        self.stream_info = {}
+        self.data_source_info = {}
 
         self.endpoint = None
         self.beamtime = None
@@ -100,7 +100,7 @@ class Plugin(object):
         self.beamtime_file_regex = None
         self.token = None
         self.token_file = None
-        self.stream = None
+        self.data_source = None
         self.n_threads = None
         self.ingest_mode = None
         self.file_regex = None
@@ -146,8 +146,8 @@ class Plugin(object):
                 )
 
         try:
-            self.stream = self.config["stream"]
-            self.log.debug("Static stream configured. Using: %s", self.stream)
+            self.data_source = self.config["data_source"]
+            self.log.debug("Static data_source configured. Using: %s", self.data_source)
         except KeyError:
             pass
 
@@ -210,24 +210,38 @@ class Plugin(object):
     def get_data_type(self):
         return self.data_type
 
-    def _create_producer(self, stream):
+    def _create_producer(self, data_source):
         token = self.token or self._get_token()
         beamtime = self.beamtime or self._get_beamtime()
         self.log.debug("type of beamtime%s", type(beamtime))
 
         config = dict(
             endpoint=self.endpoint,
+            type="raw",
             beamtime_id=beamtime,
             beamline=self.beamline,
-            stream=stream,
+            data_source=data_source,
             token=token,
             nthreads=self.n_threads,
-            timeout_sec=self.timeout
+            timeout_ms=self.timeout*1000
         )
 
         self.log.info("Create producer with config=%s", config)
-
-        self.stream_info[stream] = {
+        '''
+        self.data_source_info[data_source] = {
+            "producer":
+                asapo_producer.create_producer(
+                    endpoint='localhost:8400',
+                    type='raw',
+                    beamtime_id='asapo_test',
+                    beamline='p00',
+                    data_source='hidra_test',
+                    token='KmUDdacgBzaOD3NIJvN1NmKGqWKtx0DK-NyPjdpeWkc=',
+                    nthreads=1,
+                    timeout_ms=1000)
+        }
+        '''
+        self.data_source_info[data_source] = {
             "producer": asapo_producer.create_producer(**config),
         }
 
@@ -262,8 +276,8 @@ class Plugin(object):
     def process(self, local_path, metadata, data=None):
         """Send the file to the ASAP::O producer
 
-        Asapo stream and index are chosen by the incoming files in format
-        (<scan_id, <file_id>) -> (substream, id)
+        Asapo data_source and index are chosen by the incoming files in format
+        (<scan_id, <file_id>) -> (stream, id)
 
         Args:
             local_path: The absolute path where the file was written
@@ -271,41 +285,43 @@ class Plugin(object):
             data (optional): the data to send
         """
         try:
-            stream_id, scan_id, file_id = self._parse_file_name(local_path)
+            data_source_id, scan_id, file_id = self._parse_file_name(local_path)
         except Ignored:
             self.log.debug("Ignoring file %s", local_path)
             return
 
-        stream = self.stream or stream_id
+        data_source = self.data_source or data_source_id
 
-        if stream not in self.stream_info:
-            self._create_producer(stream=stream)
+        if data_source not in self.data_source_info:
+            self._create_producer(data_source=data_source)
 
         # for convenience
-        stream_info = self.stream_info[stream]
-        producer = stream_info["producer"]
+        data_source_info = self.data_source_info[data_source]
+        producer = data_source_info["producer"]
 
-        substream = str(scan_id)
-        self.log.debug("using substream %s", substream)
+        stream = str(scan_id)
+        self.log.debug("using stream %s", stream)
 
         config = dict(
             id=file_id + 1,  # files start with index 0 and asapo with 1
             exposed_path=self._get_exposed_path(metadata),
-            ingest_mode=self.ingest_mode,
+            data=None,
             user_meta=json.dumps({"hidra": metadata}),
-            substream=substream,
+            ingest_mode=self.ingest_mode,
+            stream=stream,
             callback=self._callback
         )
 
-        if self.data_type == "metadata":
-            config["local_path"] = local_path
+        # TODO data forwarding
+        #if self.data_type == "metadata":
+        #    config["local_path"] = local_path
 #        elif self.data_type == "data":
 #            config["data"] = data
-        else:
-            raise utils.NotSupported("No correct data_type was specified. "
-                                     "Was setup method executed?")
+        #else:
+        #    raise utils.NotSupported("No correct data_type was specified. "
+        #                             "Was setup method executed?")
 
-        producer.send_file(**config)
+        producer.send(**config)
 
     @staticmethod
     def _get_exposed_path(metadata):
@@ -340,12 +356,12 @@ class Plugin(object):
             raise utils.UsageError("Does not match file pattern")
 
         try:
-            stream = matched["stream"]
+            data_source = matched["data_source"]
         except KeyError:
-            if self.stream:
-                stream = None
+            if self.data_source:
+                data_source = None
             else:
-                raise utils.UsageError("Missing entry for stream in matched "
+                raise utils.UsageError("Missing entry for data_source in matched "
                                        "result")
         try:
             scan_id = matched["scan_id"]
@@ -358,7 +374,7 @@ class Plugin(object):
             raise utils.UsageError("Missing entry for file_idx_in_scan in "
                                    "matched result")
 
-        return stream, int(scan_id), int(file_id)
+        return data_source, int(scan_id), int(file_id)
 
     def _callback(self, header, err):
         self.lock.acquire()
@@ -371,5 +387,5 @@ class Plugin(object):
     def stop(self):
         """ Clean up """
 
-        for _, info in iteritems(self.stream_info):
+        for _, info in iteritems(self.data_source_info):
             info["producer"].wait_requests_finished(2000)
