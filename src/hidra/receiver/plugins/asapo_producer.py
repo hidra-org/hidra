@@ -41,6 +41,7 @@ asapo_producer:
     file_regex: regex string
     ignore_regex: regex string
     files_in_scan_start_index: int  # optional
+    sequential_idx: bool # file index is generated
 
 Example config:
     asapo_producer:
@@ -95,6 +96,7 @@ class Plugin(object):
         self.data_source_info = {}
 
         self.endpoint = None
+        self.beamline = None
         self.beamtime = None
         self.beamtime_file_path = None
         self.beamtime_file_regex = None
@@ -106,6 +108,7 @@ class Plugin(object):
         self.file_regex = None
         self.ignore_regex = None
         self.file_start_index = None
+        self.sequential_idx = False
 
         self.timeout = 1000
 
@@ -132,6 +135,7 @@ class Plugin(object):
         self._set_ingest_mode(self.config["ingest_mode"])
         self.file_regex = self.config["file_regex"]
         self.beamline = self.config["beamline"]
+        self.sequential_idx = self.config.get("sequential_idx", False)
 
         try:
             self.beamtime = self.config["beamtime"]
@@ -196,13 +200,12 @@ class Plugin(object):
             self.ingest_mode = (asapo_producer
                                 .INGEST_MODE_TRANSFER_METADATA_ONLY)
             self.data_type = "metadata"
-        # TODO data forwarding
-#        elif mode == "INGEST_MODE_TRANSFER_DATA":
-#            self.ingest_mode = asapo_producer.INGEST_MODE_TRANSFER_DATA
-#            self.data_type = "data"
-#        elif mode == "DEFAULT_INGEST_MODE":
-#            self.ingest_mode = asapo_producer.DEFAULT_INGEST_DATA
-#            self.data_type = "data"
+        #elif mode == "INGEST_MODE_TRANSFER_DATA":
+        #    self.ingest_mode = asapo_producer.INGEST_MODE_TRANSFER_DATA
+        #    self.data_type = "metadata"
+        elif mode == "DEFAULT_INGEST_MODE":
+            self.ingest_mode = asapo_producer.DEFAULT_INGEST_MODE
+            self.data_type = "metadata"
         else:
             raise utils.NotSupported("Ingest mode '{}' is not supported"
                                      .format(mode))
@@ -227,20 +230,6 @@ class Plugin(object):
         )
 
         self.log.info("Create producer with config=%s", config)
-        '''
-        self.data_source_info[data_source] = {
-            "producer":
-                asapo_producer.create_producer(
-                    endpoint='localhost:8400',
-                    type='raw',
-                    beamtime_id='asapo_test',
-                    beamline='p00',
-                    data_source='hidra_test',
-                    token='KmUDdacgBzaOD3NIJvN1NmKGqWKtx0DK-NyPjdpeWkc=',
-                    nthreads=1,
-                    timeout_ms=1000)
-        }
-        '''
         self.data_source_info[data_source] = {
             "producer": asapo_producer.create_producer(**config),
         }
@@ -285,43 +274,37 @@ class Plugin(object):
             data (optional): the data to send
         """
         try:
-            data_source_id, scan_id, file_id = self._parse_file_name(local_path)
+            data_source, stream, file_idx = self._parse_file_name(local_path)
         except Ignored:
             self.log.debug("Ignoring file %s", local_path)
             return
 
-        data_source = self.data_source or data_source_id
-
         if data_source not in self.data_source_info:
             self._create_producer(data_source=data_source)
 
-        # for convenience
         data_source_info = self.data_source_info[data_source]
         producer = data_source_info["producer"]
 
-        stream = str(scan_id)
         self.log.debug("using stream %s", stream)
+        self.send_message(producer, local_path, file_idx, stream, metadata)
 
-        config = dict(
-            id=file_id + 1,  # files start with index 0 and asapo with 1
-            exposed_path=self._get_exposed_path(metadata),
-            data=None,
-            user_meta=json.dumps({"hidra": metadata}),
-            ingest_mode=self.ingest_mode,
-            stream=stream,
-            callback=self._callback
-        )
+    def get_data(self, local_path):
+        # ToDo Data can be extracted directly from hidra
+        with open(str(local_path), "rb") as f:
+            return f.read()
 
-        # TODO data forwarding
-        #if self.data_type == "metadata":
-        #    config["local_path"] = local_path
-#        elif self.data_type == "data":
-#            config["data"] = data
-        #else:
-        #    raise utils.NotSupported("No correct data_type was specified. "
-        #                             "Was setup method executed?")
+    def send_message(self, producer, local_path, file_id, stream, metadata):
+        data = None
+        if self.ingest_mode != asapo_producer.INGEST_MODE_TRANSFER_METADATA_ONLY:
+            data = self.get_data(local_path)
 
-        producer.send(**config)
+        producer.send(id=file_id + 1,  # files start with index 0 and asapo with 1
+                      exposed_path=self._get_exposed_path(metadata),
+                      data=data,
+                      user_meta=json.dumps({"hidra": metadata}),
+                      ingest_mode=self.ingest_mode,
+                      stream=stream,
+                      callback=self._callback)
 
     @staticmethod
     def _get_exposed_path(metadata):
@@ -355,29 +338,42 @@ class Plugin(object):
             self.log.debug("file_regex: %s", self.file_regex)
             raise utils.UsageError("Does not match file pattern")
 
-        try:
-            data_source = matched["data_source"]
-        except KeyError:
-            if self.data_source:
-                data_source = None
-            else:
+        if self.data_source is not None:
+            data_source = self.data_source
+        else:
+            try:
+                data_source = matched["data_source"]
+            except KeyError:
                 raise utils.UsageError("Missing entry for data_source in matched "
                                        "result")
+
         try:
-            scan_id = matched["scan_id"]
+            stream = matched["scan_id"]
         except KeyError:
             raise utils.UsageError("Missing entry for scan_id in matched "
                                    "result")
-        try:
-            file_id = matched["file_idx_in_scan"]
-        except KeyError:
-            raise utils.UsageError("Missing entry for file_idx_in_scan in "
-                                   "matched result")
 
-        return data_source, int(scan_id), int(file_id)
+        if self.sequential_idx:
+            file_idx = self._get_file_idx(data_source, stream)
+        else:
+            try:
+                file_idx = int(matched["file_idx_in_scan"])
+            except KeyError:
+                raise utils.UsageError("Missing entry for file_idx_in_scan in "
+                                       "matched result")
+
+        return data_source, stream, file_idx
+
+    def _get_file_idx(self, data_source, stream):
+        if data_source not in self.data_source_info:
+            self._create_producer(data_source=data_source)
+
+        producer = self.data_source_info[data_source]["producer"]
+        return producer.stream_info(stream=stream)['lastId']
 
     def _callback(self, header, err):
         self.lock.acquire()
+        header = {key: val for key, val in header.items() if key != 'data'}
         if err is None:
             self.log.debug("Successfully sent: %s", header)
         else:
