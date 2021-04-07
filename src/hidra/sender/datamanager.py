@@ -470,7 +470,9 @@ class CheckReceiver(Base):
 # needed for multiprocessing spawn to work.
 def run_cleaner(df_type, conf):
     """ Wrapper to run in a process or thread"""
-
+    procname = conf.pop("procname", None)
+    if procname:
+        setproctitle.setproctitle(procname)
     proc = import_module(df_type).Cleaner(**conf)
     proc.run()
 
@@ -503,6 +505,8 @@ class DataManager(Base):
         self.ipc_dir_permissions = 0o777
 
         self.config = None
+
+        self.procname = None
 
         self.whitelist = None
         self.ldapuri = None
@@ -571,7 +575,8 @@ class DataManager(Base):
 
         # set process name
         # pylint: disable=no-member
-        setproctitle.setproctitle(config_gen["procname"])
+        self.procname = config_gen["procname"]
+        setproctitle.setproctitle(self.procname)
         self.log.info("Running as %s", config_gen["procname"])
 
         self.log.info("DataManager started (PID %s).", self.current_pid)
@@ -811,7 +816,8 @@ class DataManager(Base):
                     config=self.config,
                     log_queue=self.log_queue,
                     log_level=self.log_level,
-                    stop_request=self.stop_request
+                    stop_request=self.stop_request,
+                    procname=self.procname + "-statserver"
                 )
             )
             self.statserver.start()
@@ -826,7 +832,8 @@ class DataManager(Base):
                 ldapuri=self.ldapuri,
                 log_queue=self.log_queue,
                 log_level=self.log_level,
-                stop_request=self.stop_request
+                stop_request=self.stop_request,
+                procname=self.procname + "-signalhandler"
             )
         )
         self.signalhandler_pr.start()
@@ -847,7 +854,8 @@ class DataManager(Base):
                 endpoints=self.endpoints,
                 log_queue=self.log_queue,
                 log_level=self.log_level,
-                stop_request=self.stop_request
+                stop_request=self.stop_request,
+                procname=self.procname + "-taskprovider"
             )
         )
         self.taskprovider_pr.start()
@@ -866,7 +874,8 @@ class DataManager(Base):
                         log_queue=self.log_queue,
                         log_level=self.log_level,
                         endpoints=self.endpoints,
-                        stop_request=self.stop_request
+                        stop_request=self.stop_request,
+                        procname=self.procname + "-cleaner"
                     )
                 )
             )
@@ -887,7 +896,8 @@ class DataManager(Base):
                     config=self.config,
                     log_queue=self.log_queue,
                     log_level=self.log_level,
-                    stop_request=self.stop_request
+                    stop_request=self.stop_request,
+                    procname=self.procname + "-datadispatcher-" + str(i + 1)
                 )
             )
             proc.start()

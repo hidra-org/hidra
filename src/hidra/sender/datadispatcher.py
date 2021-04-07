@@ -34,6 +34,7 @@ from builtins import super  # pylint: disable=redefined-builtin
 from importlib import import_module
 import json
 import os
+import setproctitle
 import signal
 import threading
 import time
@@ -634,6 +635,8 @@ def run_datahandler(**kwargs):
 
 def run_datadispatcher(**kwargs):
     """ Wrapper to run in a process or thread"""
-
+    procname = kwargs.pop("procname", None)
+    if procname:
+        setproctitle.setproctitle(procname)
     proc = DataDispatcher(**kwargs)
     proc.run()

@@ -37,6 +37,7 @@ import errno
 from importlib import import_module
 import json
 import os
+import setproctitle
 import signal
 import zmq
 
@@ -388,6 +389,8 @@ class TaskProvider(Base):
 
 def run_taskprovider(**kwargs):
     """ Wrapper to run in a process or thread"""
-
+    procname = kwargs.pop("procname", None)
+    if procname:
+        setproctitle.setproctitle(procname)
     proc = TaskProvider(**kwargs)
     proc.run()
