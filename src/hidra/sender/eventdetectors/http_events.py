@@ -58,10 +58,58 @@ import time
 import requests
 
 from eventdetectorbase import EventDetectorBase
-import hidra.utils as utils
 
 __author__ = ('Manuela Kuhn <manuela.kuhn@desy.de>',
               'Jan Garrevoet <jan.garrevoet@desy.de>')
+
+
+class HTTPConnection:
+    def __init__(self, session):
+        self.session = session
+
+    def get_file_list(self, url):
+        response = self.session.get(url)
+        response.raise_for_status()
+        return response.json()
+
+
+class FileFilterDeque:
+    def __init__(self, fix_subdirs, history_size):
+        self.fix_subdirs = tuple(fix_subdirs)
+        # history to prevent double events
+        self.files_seen = collections.deque(maxlen=history_size)
+
+    def get_new_files(self, files_stored):
+        new_files = []
+        if (not files_stored
+                or set(files_stored).issubset(self.files_seen)):
+            return []
+
+        for file_obj in files_stored:
+            if (file_obj.startswith(self.fix_subdirs)
+                    and file_obj not in self.files_seen):
+                self.files_seen.append(file_obj)
+                new_files.append(file_obj)
+
+        return new_files
+
+
+class FileFilterSet:
+    def __init__(self, fix_subdirs):
+        self.fix_subdirs = tuple(fix_subdirs)
+        # history to prevent double events
+        self.files_seen = set()
+
+    def get_new_files(self, files_stored):
+        filtered_files = []
+        for file_obj in files_stored:
+            if (file_obj.startswith(self.fix_subdirs)
+                    and file_obj not in self.files_seen):
+                filtered_files.append(file_obj)
+
+        self.files_seen = set(files_stored)
+
+        return filtered_files
 
 
 class EventDetector(EventDetectorBase):
@@ -83,16 +131,6 @@ class EventDetector(EventDetectorBase):
         #   self.log_queue
         #   self.log
 
-        self.session = None
-        self.det_ip = None
-        self.det_api_version = None
-        self.file_writer_url = None
-        self.data_url = None
-
-        # time to sleep after detector returned emtpy file list
-        self.sleep_time = 0.5
-        self.files_downloaded = None
-
         self.required_params = ["det_ip",
                                 "det_api_version",
                                 "history_size",
@@ -101,72 +139,96 @@ class EventDetector(EventDetectorBase):
         # check that the required_params are set inside of module specific
         # config
         self.check_config()
-        self.setup()
 
-    def setup(self):
-        """
-        Sets static configuration parameters and sets up ring buffer.
-        """
-
-        self.session = requests.session()
-
-        # Enable specification via IP and DNS name
-        self.det_ip = socket.gethostbyaddr(self.config["det_ip"])[2][0]
-        self.det_api_version = self.config["det_api_version"]
-
-        try:
-            self.file_writer_url = (
-                self.config["filewriter_url"]
-                .format(det_ip=self.det_ip,
-                        det_api_version=self.det_api_version)
-            )
-        except KeyError:
-            if "det_api_version" not in self.config:
-                raise utils.WrongConfiguration(
-                    "Either filewriter_uri or det_api_version have to be "
-                    "configured."
-                )
-
-            self.file_writer_url = ("http://{}/filewriter/api/{}/files/"
-                                    .format(self.det_ip, self.det_api_version))
-
-        self.log.debug("Getting files from: %s", self.file_writer_url)
-
-        try:
-            self.data_url = self.config["datat_url"].format(det_ip=self.det_ip)
-        except KeyError:
-            self.data_url = "http://{}/data".format(self.det_ip)
-
-        # history to prevent double events
-        self.files_downloaded = collections.deque(
-            maxlen=self.config["history_size"]
-        )
+        self.event_detector_impl = create_eventdetector_impl(
+            log=self.log, **self.config)
 
     def get_new_event(self):
         """Implementation of the abstract method get_new_event.
         """
+        return self.event_detector_impl.get_new_event()
 
-        event_message_list = []
+    def stop(self):
+        """Implementation of the abstract method stop.
+        """
+        pass
 
+
+def resolve_ip(ip):
+    return socket.gethostbyaddr(ip)[2][0]
+
+
+def create_eventdetector_impl(
+        det_ip, det_api_version, history_size, fix_subdirs, log,
+        file_writer_url=(
+            "http://{det_ip}/filewriter/api/{det_api_version}/files/"),
+        data_url="http://{det_ip}/data"):
+
+    det_ip = resolve_ip(det_ip)
+
+    file_writer_url = file_writer_url.format(
+        det_ip=det_ip, det_api_version=det_api_version)
+    data_url = data_url.format(det_ip=det_ip)
+
+    log.debug("Getting files from: %s", file_writer_url)
+
+    session = requests.session()
+    connection = HTTPConnection(session)
+
+    if history_size >= 0:
+        file_filter = FileFilterDeque(fix_subdirs, history_size)
+    else:
+        file_filter = FileFilterSet(fix_subdirs)
+
+    return EventDetectorImpl(
+        file_writer_url=file_writer_url,
+        data_url=data_url,
+        connection=connection,
+        file_filter=file_filter,
+        log=log)
+
+
+class EventDetectorImpl:
+    def __init__(
+            self, file_writer_url, data_url, connection, file_filter, log):
+        self.log = log
+
+        # time to sleep after detector returned emtpy file list
+        self.sleep_time = 0.5
+        # Enable specification via IP and DNS name
+
+        self.file_writer_url = file_writer_url
+        self.data_url = data_url
+
+        self.connection = connection
+
+        self.file_filter = file_filter
+
+    def get_new_event(self):
+        """Implementation of the abstract method get_new_event.
+        """
         try:
-            response = self.session.get(self.file_writer_url)
-        except KeyboardInterrupt:
-            return event_message_list
+            files_stored = self._get_files_stored()
         except Exception:
             self.log.error("Error in getting file list from %s",
                            self.file_writer_url, exc_info=True)
             # Wait till next try to prevent denial of service
             time.sleep(self.sleep_time)
-            return event_message_list
+            return []
 
-        try:
-            response.raise_for_status()
-            files_stored = response.json()
-        except Exception:
-            self.log.error("Getting file list...failed.", exc_info=True)
-            # Wait till next try to prevent denial of service
+        new_files = self.file_filter.get_new_files(files_stored)
+
+        if not new_files:
+            # no new files received
             time.sleep(self.sleep_time)
-            return event_message_list
+            return []
+
+        event_message_list = self._build_event_messages(new_files)
+
+        return event_message_list
+
+    def _get_files_stored(self):
+        files_stored = self.connection.get_file_list(self.file_writer_url)
 
         # api version 1.8.0 and newer return a dictionary instead of a list
         if isinstance(files_stored, dict):
@@ -176,28 +238,17 @@ class EventDetector(EventDetectorBase):
         if files_stored is None:
             files_stored = []
 
-        if (not files_stored
-                or set(files_stored).issubset(self.files_downloaded)):
-            # no new files received
-            time.sleep(self.sleep_time)
+        return files_stored
 
-        fix_subdirs_tuple = tuple(self.config["fix_subdirs"])
-        for file_obj in files_stored:
-            if (file_obj.startswith(fix_subdirs_tuple)
-                    and file_obj not in self.files_downloaded):
-                (relative_path, filename) = os.path.split(file_obj)
-                event_message = {
-                    "source_path": self.data_url,
-                    "relative_path": relative_path,
-                    "filename": filename
-                }
-                self.log.debug("event_message %s", event_message)
-                event_message_list.append(event_message)
-                self.files_downloaded.append(file_obj)
-
+    def _build_event_messages(self, new_files):
+        event_message_list = []
+        for file_obj in new_files:
+            (relative_path, filename) = os.path.split(file_obj)
+            event_message = {
+                "source_path": self.data_url,
+                "relative_path": relative_path,
+                "filename": filename
+            }
+            self.log.debug("event_message %s", event_message)
+            event_message_list.append(event_message)
         return event_message_list
-
-    def stop(self):
-        """Implementation of the abstract method stop.
-        """
-        pass
