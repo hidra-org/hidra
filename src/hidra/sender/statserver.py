@@ -35,6 +35,7 @@ from builtins import super  # pylint: disable=redefined-builtin
 
 import json
 import os
+import setproctitle
 import zmq
 
 from base_class import Base
@@ -209,6 +210,8 @@ class StatServer(Base):
 
 def run_statserver(**kwargs):
     """ Wrapper to run in a process or thread"""
-
+    procname = kwargs.pop("procname", None)
+    if procname:
+        setproctitle.setproctitle(procname)
     proc = StatServer(**kwargs)
     proc.run()

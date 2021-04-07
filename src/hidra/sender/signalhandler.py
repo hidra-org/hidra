@@ -36,6 +36,7 @@ import copy
 import datetime
 import json
 import os
+import setproctitle
 import re
 import zmq
 import zmq.devices
@@ -1086,6 +1087,8 @@ class SignalHandler(Base):
 
 def run_signalhandler(**kwargs):
     """ Wrapper to run in a process or thread"""
-
+    procname = kwargs.pop("procname", None)
+    if procname:
+        setproctitle.setproctitle(procname)
     proc = SignalHandler(**kwargs)
     proc.run()
