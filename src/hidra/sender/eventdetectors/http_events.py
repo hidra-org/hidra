@@ -207,9 +207,11 @@ class EventDetectorImpl:
     def get_new_event(self):
         """Implementation of the abstract method get_new_event.
         """
-
-        files_stored = self._get_files_stored()
-        if not files_stored:
+        try:
+            files_stored = self._get_files_stored()
+        except Exception:
+            self.log.error("Error in getting file list from %s",
+                           self.file_writer_url, exc_info=True)
             # Wait till next try to prevent denial of service
             time.sleep(self.sleep_time)
             return []
@@ -226,12 +228,7 @@ class EventDetectorImpl:
         return event_message_list
 
     def _get_files_stored(self):
-        try:
-            files_stored = self.connection.get_file_list(self.file_writer_url)
-        except Exception:
-            self.log.error("Error in getting file list from %s",
-                           self.file_writer_url, exc_info=True)
-            return []
+        files_stored = self.connection.get_file_list(self.file_writer_url)
 
         # api version 1.8.0 and newer return a dictionary instead of a list
         if isinstance(files_stored, dict):

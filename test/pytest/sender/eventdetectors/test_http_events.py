@@ -118,12 +118,6 @@ def test_get_files_stored_version_1_8_0(eventdetector, connection):
     assert files_stored == ["filename"]
 
 
-def test_get_files_stored_exception(eventdetector, connection):
-    connection.get_file_list.side_effect = ConnectionError
-    files_stored = eventdetector._get_files_stored()
-    assert files_stored == []
-
-
 def test_filter(file_filter):
     files = ["current/raw/filename.ext"]
     ret = file_filter.get_new_files(files)
@@ -253,4 +247,44 @@ def test_new_event_files(eventdetector, connection, mock_sleep):
     assert new_events == [{
         'source_path': 'data_url', 'filename': 'filename.ext',
         'relative_path': 'current/raw'}]
+    mock_sleep.assert_not_called()
+
+
+def test_new_event_seen_and_reused_filename(
+        connection, file_filter_set, mock_sleep):
+    eventdetector = EventDetectorImpl(
+        "file_url", "data_url", connection, file_filter_set, log)
+    filename = "current/raw/filename.ext"
+    file_event = {
+        'source_path': 'data_url', 'filename': 'filename.ext',
+        'relative_path': 'current/raw'}
+
+    mock_sleep.reset_mock()
+    connection.get_file_list.return_value = [filename]
+    new_events = eventdetector.get_new_event()
+    assert new_events == [file_event]
+    mock_sleep.assert_not_called()
+
+    mock_sleep.reset_mock()
+    connection.get_file_list.return_value = [filename]
+    new_events = eventdetector.get_new_event()
+    assert new_events == []
+    mock_sleep.assert_called_with(0.5)
+
+    mock_sleep.reset_mock()
+    connection.get_file_list.return_value = [filename]
+    new_events = eventdetector.get_new_event()
+    assert new_events == []
+    mock_sleep.assert_called_with(0.5)
+
+    mock_sleep.reset_mock()
+    connection.get_file_list.return_value = []
+    new_events = eventdetector.get_new_event()
+    assert new_events == []
+    mock_sleep.assert_called_with(0.5)
+
+    mock_sleep.reset_mock()
+    connection.get_file_list.return_value = [filename]
+    new_events = eventdetector.get_new_event()
+    assert new_events == [file_event]
     mock_sleep.assert_not_called()
