@@ -226,20 +226,11 @@ class AsapoWorker:
         self.data_source_info = {}
 
     def _create_producer(self, data_source):
-        config = dict(
-            endpoint=self.endpoint,
-            type="raw",
-            beamtime_id=self.beamtime,
-            beamline="auto",
-            data_source=data_source,
-            token=self.token,
-            nthreads=self.n_threads,
-            timeout_ms=self.timeout * 1000
-        )
-
-        self.log.info("Create producer with config=%s", config)
+        self.log.info("Create producer with data_source=%s", data_source)
         self.data_source_info[data_source] = {
-            "producer": asapo_producer.create_producer(**config),
+            "producer": asapo_producer.create_producer(self.endpoint, "raw", self.beamtime, "auto",
+                                                       data_source, self.token, self.n_threads,
+                                                       self.timeout * 1000),
         }
 
     def send_message(self, local_path, metadata):
