@@ -1,5 +1,17 @@
 # develop
 # 4.3.0
+
+- Centos 7, Debian 10, and manylinux1 packages use Python 3
+- New history_size=-1 setting for http events to enable almost immediate reuse
+  of filenames (a previously downloaded file with the same name will be
+  overwritten)
+- Subprocesses now use descriptive names shown by ps, pgrep, etc.
+- Fix data loss due to unintended deletion of files when data storing failed
+- Fix inotifyx events for nested subdirectories
+- Fix watchdog events causing the taskprovider to hang forever on shutdown
+- Fix shutdown of inotifyx eventdetector
+- On Python 3 multiprocessing start method spawn is used
+
 # 4.2.5
 
 - Set default values of store_data and remove_data to True for control client
