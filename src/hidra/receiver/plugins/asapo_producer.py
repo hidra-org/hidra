@@ -185,6 +185,7 @@ class Plugin(object):
         """
 
         if self._config_is_modified() or self.asapo_worker is None:
+            self.config.update(utils.load_config(self.config["user_config_path"]))
             self.asapo_worker = AsapoWorker(self.config)
 
         self.asapo_worker.send_message(local_path, metadata)
@@ -206,9 +207,6 @@ class Plugin(object):
 
 class AsapoWorker:
     def __init__(self, config):
-        user_config = utils.load_config(config["user_config_path"])
-        config.update(user_config)
-
         self.endpoint = config["endpoint"]
         self.n_threads = config["n_threads"]
         self.timeout = config["timeout"]
