@@ -78,11 +78,6 @@ except ImportError:
     from pathlib2 import Path
 
 
-def get_data(local_path):
-    with open(str(local_path), "rb") as f:
-        return f.read()
-
-
 def get_exposed_path(metadata):
     exposed_path = Path(metadata["relative_path"],
                         metadata["filename"]).parts
@@ -109,8 +104,6 @@ def get_entry(dict_obj, name):
 def get_ingest_mode(mode):
     if mode == "INGEST_MODE_TRANSFER_METADATA_ONLY":
         return asapo_producer.INGEST_MODE_TRANSFER_METADATA_ONLY
-    elif mode == "DEFAULT_INGEST_MODE":
-        return asapo_producer.DEFAULT_INGEST_MODE
     else:
         raise utils.NotSupported("Ingest mode '{}' is not supported"
                                  .format(mode))
@@ -257,17 +250,11 @@ class AsapoWorker:
 
         if data_source not in self.data_source_info:
             self._create_producer(data_source=data_source)
-
         producer = self.data_source_info[data_source]["producer"]
-
-        data = None
-        if self.ingest_mode != asapo_producer.INGEST_MODE_TRANSFER_METADATA_ONLY:
-            data = get_data(local_path)
-
         self.log.debug("using stream %s", stream)
         producer.send(id=file_idx + 1,  # files start with index 0 and asapo with 1
                       exposed_path=get_exposed_path(metadata),
-                      data=data,
+                      data=None,
                       user_meta=json.dumps({"hidra": metadata}),
                       ingest_mode=self.ingest_mode,
                       stream=stream,
