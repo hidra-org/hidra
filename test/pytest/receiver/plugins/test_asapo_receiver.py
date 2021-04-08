@@ -1,20 +1,22 @@
 from pathlib import Path
 import sys
 import pytest
+from os import path
+from time import time
 from unittest.mock import create_autospec
 import asapo_producer
 
 receiver_path = (
-    Path(__file__).parent.parent.parent.parent.parent / "src/hidra/receiver")
+        Path(__file__).parent.parent.parent.parent.parent / "src/hidra/receiver")
 assert receiver_path.is_dir()
 sys.path.insert(0, receiver_path)
 
-from plugins.asapo_producer import Plugin  # noqa
+from plugins.asapo_producer import Plugin, AsapoWorker  # noqa
 
 
 @pytest.fixture
-def plugin():
-    plugin = Plugin(dict(
+def config():
+    config = dict(
         endpoint="asapo-services:8400",
         beamline="p00",
         beamtime="auto",
@@ -24,28 +26,21 @@ def plugin():
         ingest_mode="INGEST_MODE_TRANSFER_METADATA_ONLY",
         file_regex=".*/(?P<detector>.*)/(?P<scan_id>.*)_scan[0-9]*-(?P<file_idx_in_scan>.*).tif",
         ignore_regex=".*/.*.metadata$",
-    ))
-    plugin.send_message = create_autospec(plugin.send_message)
-    plugin._get_file_idx = create_autospec(plugin._get_file_idx, return_value=1)
-    yield plugin
+        user_config_path="Path"
+    )
+    return config
 
 
 @pytest.fixture
-def plugin_sequential():
-    plugin = Plugin(dict(
-        endpoint="asapo-services:8400",
-        beamline="p00",
-        beamtime="auto",
-        token="abcdefg1234=",
-        data_source='test001',
-        n_threads=1,
-        ingest_mode="DEFAULT_INGEST_MODE",
-        file_regex=".*/(?P<detector>.*)/(?P<scan_id>.*)_scan[0-9]*-(?P<file_idx_in_scan>.*).tif",
-        ignore_regex=".*/.*.metadata$",
-        sequential_idx=True
-    ))
-    plugin.send_message = create_autospec(plugin.send_message)
-    plugin._get_file_idx = create_autospec(plugin._get_file_idx, return_value=1)
+def worker(config):
+    worker = AsapoWorker(config)
+    worker.send_message = create_autospec(worker.send_message)
+    yield worker
+
+
+@pytest.fixture
+def plugin(config):
+    plugin = Plugin(config)
     yield plugin
 
 
@@ -60,25 +55,39 @@ def metadata(filepath):
             'filename': 'stream100_scan0-107.tif'}
 
 
-def test_setup(plugin, metadata, filepath):
-    plugin.setup()
-    assert plugin.ingest_mode == asapo_producer.INGEST_MODE_TRANSFER_METADATA_ONLY
-
-    plugin.process(local_path=filepath, metadata=metadata)
-    _, local_path, file_idx, stream, send_meta = plugin.send_message.call_args[0]
-    assert local_path == filepath
+def test_worker(worker, metadata, filepath):
+    assert worker.ingest_mode == asapo_producer.INGEST_MODE_TRANSFER_METADATA_ONLY
+    data_source, stream, file_idx = worker._parse_file_name(filepath)
     assert file_idx == 107
     assert stream == 'stream100'
-    assert send_meta == metadata
+    assert data_source == 'test001'
 
 
-def test_sequential(plugin_sequential, metadata, filepath):
-    plugin_sequential.setup()
-    assert plugin_sequential.ingest_mode == asapo_producer.DEFAULT_INGEST_MODE
+def test_config_time(plugin, metadata):
+    plugin.setup()
 
-    plugin_sequential.process(local_path=filepath, metadata=metadata)
-    _, local_path, file_idx, stream, send_meta = plugin_sequential.send_message.call_args[0]
-    assert local_path == filepath
-    assert file_idx == 1
-    assert stream == 'stream100'
-    assert send_meta == metadata
+    try:
+        plugin.config_timeout = 1
+        plugin._get_config_time("bla")
+    except FileNotFoundError as err:
+        assert "No such file or directory" in str(err)
+
+    file_path = Path(__file__)
+    conf_time = path.getmtime(file_path)
+    assert conf_time == plugin._get_config_time(file_path)
+
+
+def test_config_modified(plugin):
+    plugin._get_config_time = create_autospec(plugin._get_config_time, return_value=100)
+
+    plugin.config_time = 99
+    plugin.check_time = 0
+    assert plugin._config_is_modified()
+
+    plugin.config_time = 100
+    plugin.check_time = 0
+    assert not plugin._config_is_modified()
+
+    plugin.config_time = 99
+    plugin.check_time = time()
+    assert not plugin._config_is_modified()

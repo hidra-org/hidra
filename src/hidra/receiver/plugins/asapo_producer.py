@@ -158,7 +158,7 @@ class Plugin(object):
         check_config(self.log, self.config, required_parameter)
 
         if "data_source" in self.config:
-            self.log.debug("Static data_source configured. Using: %s", self.data_source)
+            self.log.debug("Static data_source configured. Using: %s", self.config["data_source"])
 
         if "token" in self.config:
             self.log.debug("Static token configured.")
@@ -216,7 +216,7 @@ class AsapoWorker:
     def __init__(self, config):
         self.endpoint = config["endpoint"]
         self.n_threads = config["n_threads"]
-        self.timeout = config["timeout"]
+        self.timeout = config.get("timeout", 5)
         self.beamtime = config["beamtime"]
         self.token = config["token"]
         self.ingest_mode = get_ingest_mode(config["ingest_mode"])
@@ -224,13 +224,13 @@ class AsapoWorker:
         self.data_source = config.get("data_source", None)
         self.file_regex = config["file_regex"]
 
-        if "ignore_regex" in config:
-            self.ignore_regex = config["ignore_regex"]
-            self.log.debug("Ignoring files matching '%s'.", self.ignore_regex)
-
         self.lock = threading.Lock()
         self.log = logging.getLogger(__name__)
         self.data_source_info = {}
+
+        if "ignore_regex" in config:
+            self.ignore_regex = config["ignore_regex"]
+            self.log.debug("Ignoring files matching '%s'.", self.ignore_regex)
 
     def _create_producer(self, data_source):
         self.log.info("Create producer with data_source=%s", data_source)
