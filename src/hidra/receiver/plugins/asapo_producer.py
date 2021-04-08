@@ -65,7 +65,7 @@ import logging
 from os import path
 import re
 import threading
-from time import time
+from time import time, sleep
 
 from future.utils import iteritems
 
@@ -141,7 +141,8 @@ class Plugin(object):
 
         self.config = plugin_config
 
-        self.timeout = 1000
+        self.timeout = 1
+        self.config_timeout = 10
         self.config_time = 0
         self.check_time = 0
 
@@ -190,12 +191,25 @@ class Plugin(object):
 
         self.asapo_worker.send_message(local_path, metadata)
 
+    def _get_config_time(self, file_path):
+        start = time()
+        while True:
+            try:
+                return path.getmtime(file_path)
+            except OSError as err:
+                if time() - start > self.config_timeout:
+                    raise err
+                self.log.warn(
+                    "Retrying writing data due to error: {}".format(err))
+                sleep(1)
+
     def _config_is_modified(self):
         ts = time()
-        if (self.check_time - ts) > self.timeout:
+        if (ts - self.check_time) > self.timeout:
             file_path = self.config["user_config_path"]
-            if self.config_time != path.getmtime(file_path):
-                self.config_time = path.getmtime(file_path)
+            config_time = self._get_config_time(file_path)
+            if self.config_time != config_time:
+                self.config_time = config_time
                 return True
         self.check_time = ts
         return False
