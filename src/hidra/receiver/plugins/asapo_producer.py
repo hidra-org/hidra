@@ -78,6 +78,55 @@ except ImportError:
     from pathlib2 import Path
 
 
+def get_data(local_path):
+    with open(str(local_path), "rb") as f:
+        return f.read()
+
+
+def get_exposed_path(metadata):
+    exposed_path = Path(metadata["relative_path"],
+                        metadata["filename"]).parts
+    # asapo work on the core fs only at the moment thus the current
+    # directory does not exist there
+    if exposed_path[0] == "current":
+        exposed_path = Path().joinpath(*exposed_path[1:]).as_posix()
+    else:
+        raise utils.NotSupported(
+            "Path '{}' is not supported"
+                .format(Path().joinpath(*exposed_path).as_posix())
+        )
+
+    return exposed_path
+
+
+def get_entry(dict_obj, name):
+    try:
+        return dict_obj[name]
+    except KeyError:
+        raise utils.UsageError(f"Missing entry for {name} in matched result")
+
+
+def get_ingest_mode(mode):
+    if mode == "INGEST_MODE_TRANSFER_METADATA_ONLY":
+        return asapo_producer.INGEST_MODE_TRANSFER_METADATA_ONLY
+    elif mode == "DEFAULT_INGEST_MODE":
+        return asapo_producer.DEFAULT_INGEST_MODE
+    else:
+        raise utils.NotSupported("Ingest mode '{}' is not supported"
+                                 .format(mode))
+
+
+def check_config(logger, config, required_parameter):
+    failed = False
+    for i in required_parameter:
+        if i not in config:
+            logger.error("Wrong configuration. Missing parameter: '%s'", i)
+            failed = True
+
+    if failed:
+        raise utils.WrongConfiguration("The configuration has missing or wrong parameters.")
+
+
 class Ignored(Exception):
     """Raised when an event is processed that should be ignored."""
     pass
@@ -91,14 +140,12 @@ class Plugin(object):
         super().__init__()
 
         self.config = plugin_config
-        self.required_parameter = []
 
         self.timeout = 1000
         self.config_time = 0
         self.check_time = 0
 
         self.asapo_worker = None
-        self.data_type = None
         self.lock = None
         self.log = None
 
@@ -106,7 +153,7 @@ class Plugin(object):
         """Sets the configuration and starts the producer
         """
         self.log = logging.getLogger(__name__)
-        self.required_parameter = [
+        required_parameter = [
             "endpoint",
             "n_threads",
             "ingest_mode",
@@ -114,8 +161,7 @@ class Plugin(object):
             "file_regex",
             "beamline"
         ]
-        self._check_config()
-        self._set_ingest_mode(self.config["ingest_mode"])
+        check_config(self.log, self.config, required_parameter)
 
         if "data_source" in self.config:
             self.log.debug("Static data_source configured. Using: %s", self.data_source)
@@ -123,39 +169,8 @@ class Plugin(object):
         if "token" in self.config:
             self.log.debug("Static token configured.")
 
-    def _check_config(self):
-        failed = False
-
-        for i in self.required_parameter:
-            if i not in self.config:
-                self.log.error(
-                    "Wrong configuration. Missing parameter: '%s'", i
-                )
-                failed = True
-
-        if failed:
-            raise utils.WrongConfiguration(
-                "The configuration has missing or wrong parameters."
-            )
-
-    def _set_ingest_mode(self, mode):
-        if mode == "INGEST_MODE_TRANSFER_METADATA_ONLY":
-            ingest_mode = (asapo_producer
-                           .INGEST_MODE_TRANSFER_METADATA_ONLY)
-            self.data_type = "metadata"
-        # elif mode == "INGEST_MODE_TRANSFER_DATA":
-        #    self.ingest_mode = asapo_producer.INGEST_MODE_TRANSFER_DATA
-        #    self.data_type = "metadata"
-        elif mode == "DEFAULT_INGEST_MODE":
-            ingest_mode = asapo_producer.DEFAULT_INGEST_MODE
-            self.data_type = "metadata"
-        else:
-            raise utils.NotSupported("Ingest mode '{}' is not supported"
-                                     .format(mode))
-        self.config['ingest_mode'] = ingest_mode
-
     def get_data_type(self):
-        return self.data_type
+        return "metadata"
 
     def process(self, local_path, metadata, data=None):
         """Send the file to the ASAP::O producer
@@ -191,23 +206,21 @@ class Plugin(object):
 
 class AsapoWorker:
     def __init__(self, config):
-
-        self.config = config
         user_config = utils.load_config(config["user_config_path"])
-        self.config.update(user_config)
+        config.update(user_config)
 
-        self.endpoint = self.config["endpoint"]
-        self.n_threads = self.config["n_threads"]
-        self.timeout = self.config["timeout"]
-        self.beamtime = self.config["beamtime"]
-        self.token = self.config["token"]
-        self.ingest_mode = self.config["ingest_mode"]
+        self.endpoint = config["endpoint"]
+        self.n_threads = config["n_threads"]
+        self.timeout = config["timeout"]
+        self.beamtime = config["beamtime"]
+        self.token = config["token"]
+        self.ingest_mode = get_ingest_mode(config["ingest_mode"])
 
-        self.data_source = self.config.get("data_source", None)
-        self.file_regex = self.config["file_regex"]
+        self.data_source = config.get("data_source", None)
+        self.file_regex = config["file_regex"]
 
-        if "ignore_regex" in self.config:
-            self.ignore_regex = self.config["ignore_regex"]
+        if "ignore_regex" in config:
+            self.ignore_regex = config["ignore_regex"]
             self.log.debug("Ignoring files matching '%s'.", self.ignore_regex)
 
         self.lock = threading.Lock()
@@ -215,7 +228,6 @@ class AsapoWorker:
         self.data_source_info = {}
 
     def _create_producer(self, data_source):
-
         config = dict(
             endpoint=self.endpoint,
             type="raw",
@@ -247,21 +259,16 @@ class AsapoWorker:
 
         data = None
         if self.ingest_mode != asapo_producer.INGEST_MODE_TRANSFER_METADATA_ONLY:
-            data = self._get_data(local_path)
+            data = get_data(local_path)
 
         self.log.debug("using stream %s", stream)
         producer.send(id=file_idx + 1,  # files start with index 0 and asapo with 1
-                      exposed_path=self._get_exposed_path(metadata),
+                      exposed_path=get_exposed_path(metadata),
                       data=data,
                       user_meta=json.dumps({"hidra": metadata}),
                       ingest_mode=self.ingest_mode,
                       stream=stream,
                       callback=self._callback)
-
-    @staticmethod
-    def _get_data(self, local_path):
-        with open(str(local_path), "rb") as f:
-            return f.read()
 
     def _callback(self, header, err):
         self.lock.acquire()
@@ -271,24 +278,6 @@ class AsapoWorker:
         else:
             self.log.error("Could not sent: %s, %s", header, err)
         self.lock.release()
-
-    @staticmethod
-    def _get_exposed_path(metadata):
-        exposed_path = Path(metadata["relative_path"],
-                            metadata["filename"]).parts
-
-        # TODO this is a workaround
-        # asapo work on the core fs only at the moment thus the current
-        # directory does not exist there
-        if exposed_path[0] == "current":
-            exposed_path = Path().joinpath(*exposed_path[1:]).as_posix()
-        else:
-            raise utils.NotSupported(
-                "Path '{}' is not supported"
-                    .format(Path().joinpath(*exposed_path).as_posix())
-            )
-
-        return exposed_path
 
     def _parse_file_name(self, path):
         # check for ignored files
@@ -304,27 +293,12 @@ class AsapoWorker:
             self.log.debug("file_regex: %s", self.file_regex)
             raise utils.UsageError("Does not match file pattern")
 
-        if self.data_source is not None:
-            data_source = self.data_source
-        else:
-            try:
-                data_source = matched["data_source"]
-            except KeyError:
-                raise utils.UsageError("Missing entry for data_source in matched "
-                                       "result")
+        data_source = self.data_source
+        if self.data_source is None:
+            data_source = get_entry(matched, "data_source")
 
-        try:
-            stream = matched["scan_id"]
-        except KeyError:
-            raise utils.UsageError("Missing entry for scan_id in matched "
-                                   "result")
-
-        try:
-            file_idx = int(matched["file_idx_in_scan"])
-        except KeyError:
-            raise utils.UsageError("Missing entry for file_idx_in_scan in "
-                                   "matched result")
-
+        stream = get_entry(matched, "scan_id")
+        file_idx = int(get_entry(matched, "file_idx_in_scan"))
         return data_source, stream, file_idx
 
     def stop(self):
