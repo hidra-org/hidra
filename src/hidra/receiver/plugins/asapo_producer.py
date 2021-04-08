@@ -192,11 +192,11 @@ class Plugin(object):
     def _config_is_modified(self):
         ts = time()
         if (self.check_time - ts) > self.timeout:
-            self.check_time = ts
             file_path = self.config["user_config_path"]
             if self.config_time != path.getmtime(file_path):
                 self.config_time = path.getmtime(file_path)
                 return True
+        self.check_time = ts
         return False
 
     def stop(self):
