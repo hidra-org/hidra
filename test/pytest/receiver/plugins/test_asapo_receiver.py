@@ -18,14 +18,11 @@ from plugins.asapo_producer import Plugin, AsapoWorker  # noqa
 def config():
     config = dict(
         endpoint="asapo-services:8400",
-        beamline="p00",
-        beamtime="auto",
+        beamtime="p00",
         token="abcdefg1234=",
         data_source='test001',
         n_threads=1,
-        ingest_mode="INGEST_MODE_TRANSFER_METADATA_ONLY",
         file_regex=".*/(?P<detector>.*)/(?P<scan_id>.*)_scan[0-9]*-(?P<file_idx_in_scan>.*).tif",
-        ignore_regex=".*/.*.metadata$",
         user_config_path="Path"
     )
     return config
@@ -33,7 +30,8 @@ def config():
 
 @pytest.fixture
 def worker(config):
-    worker = AsapoWorker(config)
+    config = {k: v for k, v in config.items() if k != "user_config_path"}
+    worker = AsapoWorker(**config)
     worker.send_message = create_autospec(worker.send_message)
     yield worker
 
@@ -70,6 +68,7 @@ def test_config_time(plugin, metadata):
         plugin.config_timeout = 1
         plugin._get_config_time("bla")
     except FileNotFoundError as err:
+        print("ERR: ", err)
         assert "No such file or directory" in str(err)
 
     file_path = Path(__file__)
