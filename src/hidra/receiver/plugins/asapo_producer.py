@@ -221,9 +221,10 @@ class Plugin(object):
 
 class AsapoWorker:
     def __init__(self, endpoint, beamtime, token, n_threads, file_regex,
-                 data_source=None, timeout=5):
+                 data_source=None, timeout=5, beamline='auto'):
         self.endpoint = endpoint
         self.beamtime = beamtime
+        self.beamline = beamline
         self.token = token
         self.n_threads = n_threads
         self.timeout = timeout
@@ -238,7 +239,7 @@ class AsapoWorker:
     def _create_producer(self, data_source):
         logger.info("Create producer with data_source=%s", data_source)
         self.data_source_info[data_source] = {
-            "producer": asapo_producer.create_producer(self.endpoint, "raw", self.beamtime, "auto",
+            "producer": asapo_producer.create_producer(self.endpoint, "raw", self.beamtime, self.beamline,
                                                        data_source, self.token, self.n_threads,
                                                        self.timeout * 1000),
         }
