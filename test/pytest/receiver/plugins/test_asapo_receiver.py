@@ -30,7 +30,7 @@ def config():
 
 @pytest.fixture
 def worker(config):
-    config = {k: v for k, v in config.items() if k != "user_config_path"}
+    del config["user_config_path"]
     worker = AsapoWorker(**config)
     worker.send_message = create_autospec(worker.send_message)
     yield worker
@@ -63,13 +63,12 @@ def test_worker(worker, metadata, filepath):
 
 def test_config_time(plugin, metadata):
     plugin.setup()
-
+    plugin.config_timeout = 1
     try:
-        plugin.config_timeout = 1
         plugin._get_config_time("bla")
     except FileNotFoundError as err:
-        print("ERR: ", err)
-        assert "No such file or directory" in str(err)
+        with pytest.raises(FileNotFoundError, "No such file or directory"):
+            plugin._get_config_time("bla")
 
     file_path = Path(__file__)
     conf_time = path.getmtime(file_path)
@@ -79,14 +78,9 @@ def test_config_time(plugin, metadata):
 def test_config_modified(plugin):
     plugin._get_config_time = create_autospec(plugin._get_config_time, return_value=100)
 
-    plugin.config_time = 99
     plugin.check_time = 0
     assert plugin._config_is_modified()
-
-    plugin.config_time = 100
-    plugin.check_time = 0
     assert not plugin._config_is_modified()
 
-    plugin.config_time = 99
     plugin.check_time = time()
     assert not plugin._config_is_modified()

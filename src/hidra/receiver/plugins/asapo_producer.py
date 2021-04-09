@@ -89,14 +89,11 @@ def get_exposed_path(metadata):
     return exposed_path
 
 
-def get_entry(dict_obj, name, default=None):
+def get_entry(dict_obj, name):
     try:
         return dict_obj[name]
     except KeyError:
-        if default is not None:
-            return default
-        else:
-            raise utils.UsageError(f"Missing entry for {name} in matched result")
+        raise utils.UsageError(f"Missing entry for {name} in matched result")
 
 
 def get_ingest_mode(mode):
@@ -141,10 +138,10 @@ class Plugin(object):
     def __init__(self, plugin_config):
         super().__init__()
 
+        self.user_config_path = plugin_config.pop("user_config_path")
         self.config = plugin_config
 
         self.timeout = 1
-        self.config_timeout = 10
         self.config_time = 0
         self.check_time = 0
 
@@ -157,7 +154,6 @@ class Plugin(object):
             "endpoint",
             "n_threads",
             "token",
-            "user_config_path",
             "file_regex",
             "beamtime"
         ]
@@ -191,9 +187,9 @@ class Plugin(object):
         self.asapo_worker.send_message(local_path, metadata)
 
     def _create_asapo_config(self):
-        config = {k: v for k, v in self.config.items() if k != "user_config_path"}
+        config = self.config.copy()
         try:
-            user_config = utils.load_config(self.config["user_config_path"])
+            user_config = utils.load_config(self.user_config_path)
             config.update(user_config)
         except OSError as err:
             logger.warning("Could not get user config: {}".format(err))
@@ -201,23 +197,19 @@ class Plugin(object):
         return config
 
     def _get_config_time(self, file_path):
-        start = time()
-        while True:
-            try:
-                return path.getmtime(file_path)
-            except OSError as err:
-                if time() - start > self.config_timeout:
-                    logger.warning("Could not get creation time of user config: {}".format(err))
-                    return 0
-                sleep(1)
+        try:
+            return path.getmtime(file_path)
+        except OSError as err:
+            logger.warning("Could not get creation time of user config: {}".format(err))
+            return 0
 
     def _config_is_modified(self):
         ts = time()
         if (ts - self.check_time) > self.timeout:
-            file_path = self.config["user_config_path"]
-            config_time = self._get_config_time(file_path)
+            config_time = self._get_config_time(self.user_config_path)
             if self.config_time != config_time:
                 self.config_time = config_time
+                self.check_time = ts
                 return True
         self.check_time = ts
         return False
@@ -285,7 +277,9 @@ class AsapoWorker:
 
     def _parse_file_name(self, path):
         matched = parse_file_path(self.file_regex, path)
-        data_source = get_entry(matched, "data_source", self.data_source)
+        data_source = self.data_source
+        if data_source is None:
+            data_source = get_entry(matched, "data_source")
         stream = get_entry(matched, "scan_id")
         file_idx = int(get_entry(matched, "file_idx_in_scan"))
         return data_source, stream, file_idx
