@@ -30,7 +30,7 @@ datareceiver:
 asapo_producer:
     endpoint: string
     beamtime: string
-    data_source: string  # optional
+    default_data_source: string  # optional
     token: string
     n_threads: int
     file_regex: regex string
@@ -40,7 +40,7 @@ Example config:
     asapo_producer:
         endpoint: "asapo-services:8400"
         beamtime: "asapo_test"
-        data_source: "hidra_test"
+        default_data_source: "hidra_test"
         token: "KmUDdacgBzaOD3NIJvN1NmKGqWKtx0DK-NyPjdpeWkc="
         n_threads: 1
         user_config_path: 'path/to/conf'
@@ -221,14 +221,14 @@ class Plugin(object):
 
 class AsapoWorker:
     def __init__(self, endpoint, beamtime, token, n_threads, file_regex,
-                 data_source=None, timeout=5, beamline='auto'):
+                 default_data_source=None, timeout=5, beamline='auto'):
         self.endpoint = endpoint
         self.beamtime = beamtime
         self.beamline = beamline
         self.token = token
         self.n_threads = n_threads
         self.timeout = timeout
-        self.data_source = data_source
+        self.default_data_source = default_data_source
         self.file_regex = file_regex
 
         # Other ingest modes are not yet implemented
@@ -278,9 +278,14 @@ class AsapoWorker:
 
     def _parse_file_name(self, path):
         matched = parse_file_path(self.file_regex, path)
-        data_source = self.data_source
-        if data_source is None:
+        try:
             data_source = get_entry(matched, "data_source")
+        except utils.UsageError:
+            if self.default_data_source is not None:
+                data_source = self.default_data_source
+            else:
+                raise
+
         stream = get_entry(matched, "scan_id")
         file_idx = int(get_entry(matched, "file_idx_in_scan"))
         return data_source, stream, file_idx
