@@ -159,8 +159,6 @@ class Plugin(object):
         ]
         check_config(self.config, required_parameter)
 
-        if "data_source" in self.config:
-            logger.debug("Static data_source configured. Using: %s", self.config["data_source"])
 
         if "token" in self.config:
             logger.debug("Static token configured.")
