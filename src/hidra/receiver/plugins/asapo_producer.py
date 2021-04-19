@@ -35,6 +35,7 @@ asapo_producer:
     n_threads: int
     file_regex: regex string
     user_config_path: : string # path to user config file
+    start_file_idx : Start file index, default 1
 
 Example config:
     asapo_producer:
@@ -159,7 +160,6 @@ class Plugin(object):
         ]
         check_config(self.config, required_parameter)
 
-
         if "token" in self.config:
             logger.debug("Static token configured.")
 
@@ -219,7 +219,7 @@ class Plugin(object):
 
 class AsapoWorker:
     def __init__(self, endpoint, beamtime, token, n_threads, file_regex,
-                 default_data_source=None, timeout=5, beamline='auto'):
+                 default_data_source=None, timeout=5, beamline='auto', start_file_idx=1):
         self.endpoint = endpoint
         self.beamtime = beamtime
         self.beamline = beamline
@@ -228,6 +228,7 @@ class AsapoWorker:
         self.timeout = timeout
         self.default_data_source = default_data_source
         self.file_regex = file_regex
+        self.start_file_idx = start_file_idx
 
         # Other ingest modes are not yet implemented
         self.ingest_mode = get_ingest_mode("INGEST_MODE_TRANSFER_METADATA_ONLY")
@@ -257,7 +258,7 @@ class AsapoWorker:
             return
 
         producer = self._get_producer(data_source)
-        producer.send(id=file_idx + 1,  # files start with index 0 and asapo with 1
+        producer.send(id=file_idx + 1 - self.start_file_idx,  # files start with index 0 and asapo with 1
                       exposed_path=get_exposed_path(metadata),
                       data=None,
                       user_meta=json.dumps({"hidra": metadata}),
