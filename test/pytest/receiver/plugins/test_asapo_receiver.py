@@ -20,7 +20,7 @@ def config():
         endpoint="asapo-services:8400",
         beamtime="p00",
         token="abcdefg1234=",
-        data_source='test001',
+        default_data_source='test001',
         n_threads=1,
         file_regex=".*/(?P<detector>.*)/(?P<scan_id>.*)_scan[0-9]*-(?P<file_idx_in_scan>.*).tif",
         user_config_path="Path"
