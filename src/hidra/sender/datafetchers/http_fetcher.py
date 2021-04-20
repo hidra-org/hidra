@@ -313,6 +313,8 @@ class DataFetcher(DataFetcherBase):
             open_connections (dict): The dictionary containing all open zmq
                 connections.
         """
+        sending_failed = False
+        self.config["remove_flag"] = False
 
         response = self.config["session"].get(self.source_file, stream=True)
         try:
@@ -335,9 +337,6 @@ class DataFetcher(DataFetcherBase):
                             config=self.config,
                             config_df=self.config_df,
                             log=self.log)
-
-        sending_failed = False
-        self.config["remove_flag"] = False
 
         writer.open(metadata)
 
