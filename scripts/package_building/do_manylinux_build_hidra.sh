@@ -16,7 +16,7 @@ fi
 
 # freeze
 PYBIN=/opt/python/cp37-cp37m/bin/python
-$PYBIN -m pip install cx_freeze
+$PYBIN -m pip install cx_freeze==6.5
 $PYBIN -m pip install -r requirements.txt
 
 # build inotifyx
