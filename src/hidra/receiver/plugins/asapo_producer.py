@@ -29,31 +29,24 @@ datareceiver:
 
 asapo_producer:
     endpoint: string
-    beamline: string
-    beamtime: string # optional
-    beamtime_file_path: string  # needed if beamtime is not static
-    beamtime_file_regex: string  # needed if beamtime is not static
-    stream: string  # optional
-    token: string  # optional
-    token_file: string  # needed if token is not static
+    beamtime: string
+    default_data_source: string  # optional
+    token: string
     n_threads: int
-    ingest_mode: string
     file_regex: regex string
-    ignore_regex: regex string
-    files_in_scan_start_index: int  # optional
+    user_config_path: : string # path to user config file
+    start_file_idx : Start file index, default 1
 
 Example config:
     asapo_producer:
         endpoint: "asapo-services:8400"
-        beamline: "my_beamline"
         beamtime: "asapo_test"
-        stream: "hidra_test"
+        default_data_source: "hidra_test"
         token: "KmUDdacgBzaOD3NIJvN1NmKGqWKtx0DK-NyPjdpeWkc="
         n_threads: 1
-        ingest_mode: INGEST_MODE_TRANSFER_METADATA_ONLY
-        file_regex: '.*/(?P<stream>.*)/scan_(?P<scan_id>.*)/'
+        user_config_path: 'path/to/conf'
+        file_regex: '.*/(?P<data_source>.*)/scan_(?P<scan_id>.*)/'
                     '(?P<file_idx_in_scan>.*).tif'
-        ignore_regex: '.*/.*.metadata$'
 """
 
 from __future__ import absolute_import
@@ -63,9 +56,10 @@ from __future__ import unicode_literals
 from builtins import super  # pylint: disable=redefined-builtin
 import json
 import logging
-import os
+from os import path
 import re
 import threading
+from time import time, sleep
 
 from future.utils import iteritems
 
@@ -77,6 +71,61 @@ try:
 except ImportError:
     from pathlib2 import Path
 
+logger = logging.getLogger(__name__)
+
+
+def get_exposed_path(metadata):
+    exposed_path = Path(metadata["relative_path"],
+                        metadata["filename"]).parts
+    # asapo work on the core fs only at the moment thus the current
+    # directory does not exist there
+    if exposed_path[0] == "current":
+        exposed_path = Path().joinpath(*exposed_path[1:]).as_posix()
+    else:
+        raise utils.NotSupported(
+            "Path '{}' is not supported"
+                .format(Path().joinpath(*exposed_path).as_posix())
+        )
+
+    return exposed_path
+
+
+def get_entry(dict_obj, name):
+    try:
+        return dict_obj[name]
+    except KeyError:
+        raise utils.UsageError(f"Missing entry for {name} in matched result")
+
+
+def get_ingest_mode(mode):
+    if mode == "INGEST_MODE_TRANSFER_METADATA_ONLY":
+        return asapo_producer.INGEST_MODE_TRANSFER_METADATA_ONLY
+    else:
+        raise utils.NotSupported("Ingest mode '{}' is not supported"
+                                 .format(mode))
+
+
+def check_config(config, required_parameter):
+    failed = False
+    for i in required_parameter:
+        if i not in config:
+            logger.error("Wrong configuration. Missing parameter: '%s'", i)
+            failed = True
+
+    if failed:
+        raise utils.WrongConfiguration("The configuration has missing or wrong parameters.")
+
+
+def parse_file_path(file_regex, file_path):
+    # parse file name
+    search = re.search(file_regex, file_path)
+    if search:
+        return search.groupdict()
+    else:
+        logger.debug("file name: %s", file_path)
+        logger.debug("file_regex: %s", file_regex)
+        raise Ignored("Does not match file pattern. Ignoring file {}".format(file_path))
+
 
 class Ignored(Exception):
     """Raised when an event is processed that should be ignored."""
@@ -86,290 +135,160 @@ class Ignored(Exception):
 class Plugin(object):
     """Implements an ASAP::O producer plugin
     """
+
     def __init__(self, plugin_config):
         super().__init__()
 
+        self.user_config_path = plugin_config.pop("user_config_path")
         self.config = plugin_config
-        self.required_parameter = []
 
-        self.stream_info = {}
+        self.timeout = 1
+        self.config_time = 0
+        self.check_time = 0
 
-        self.endpoint = None
-        self.beamtime = None
-        self.beamtime_file_path = None
-        self.beamtime_file_regex = None
-        self.token = None
-        self.token_file = None
-        self.stream = None
-        self.n_threads = None
-        self.ingest_mode = None
-        self.file_regex = None
-        self.ignore_regex = None
-        self.file_start_index = None
-
-        self.timeout = 1000
-
-        self.data_type = None
-        self.lock = None
-        self.log = None
+        self.asapo_worker = None
 
     def setup(self):
         """Sets the configuration and starts the producer
         """
-        self.log = logging.getLogger(__name__)
-
-        self.required_parameter = [
+        required_parameter = [
             "endpoint",
             "n_threads",
-            "ingest_mode",
+            "token",
             "file_regex",
-            "beamline"
+            "beamtime"
         ]
-        self._check_config()
+        check_config(self.config, required_parameter)
 
-        self.endpoint = self.config["endpoint"]
-        self.n_threads = self.config["n_threads"]
-        self._set_ingest_mode(self.config["ingest_mode"])
-        self.file_regex = self.config["file_regex"]
-        self.beamline = self.config["beamline"]
-
-        try:
-            self.beamtime = self.config["beamtime"]
-        except KeyError:
-            try:
-                self.beamtime_file_path = self.config["beamtime_file_path"]
-                self.beamtime_file_regex = self.config["beamtime_file_regex"]
-            except KeyError:
-                raise utils.WrongConfiguration(
-                    "Missing token specification. Either configure a static "
-                    "token or the path to the token file."
-                )
-
-        try:
-            self.stream = self.config["stream"]
-            self.log.debug("Static stream configured. Using: %s", self.stream)
-        except KeyError:
-            pass
-
-        try:
-            self.token = self.config["token"]
-            self.log.debug("Static token configured.")
-        except KeyError:
-            try:
-                self.token_file = self.config["token_file"]
-            except KeyError:
-                raise utils.WrongConfiguration(
-                    "Missing token specification. Either configure a static "
-                    "token or the path to the token file."
-                )
-
-        try:
-            self.ignore_regex = self.config["ignore_regex"]
-            self.log.debug("Ignoring files matching '%s'.", self.ignore_regex)
-        except KeyError:
-            pass
-
-        try:
-            self.file_start_index = self.config["files_in_scan_start_index"]
-        except KeyError:
-            self.file_start_index = 0
-
-        self.lock = threading.Lock()
-
-    def _check_config(self):
-        failed = False
-
-        for i in self.required_parameter:
-            if i not in self.config:
-                self.log.error(
-                    "Wrong configuration. Missing parameter: '%s'", i
-                )
-                failed = True
-
-        if failed:
-            raise utils.WrongConfiguration(
-                "The configuration has missing or wrong parameters."
-            )
-
-    def _set_ingest_mode(self, mode):
-        if mode == "INGEST_MODE_TRANSFER_METADATA_ONLY":
-            self.ingest_mode = (asapo_producer
-                                .INGEST_MODE_TRANSFER_METADATA_ONLY)
-            self.data_type = "metadata"
-        # TODO data forwarding
-#        elif mode == "INGEST_MODE_TRANSFER_DATA":
-#            self.ingest_mode = asapo_producer.INGEST_MODE_TRANSFER_DATA
-#            self.data_type = "data"
-#        elif mode == "DEFAULT_INGEST_MODE":
-#            self.ingest_mode = asapo_producer.DEFAULT_INGEST_DATA
-#            self.data_type = "data"
-        else:
-            raise utils.NotSupported("Ingest mode '{}' is not supported"
-                                     .format(mode))
+        if "token" in self.config:
+            logger.debug("Static token configured.")
 
     def get_data_type(self):
-        return self.data_type
-
-    def _create_producer(self, stream):
-        token = self.token or self._get_token()
-        beamtime = self.beamtime or self._get_beamtime()
-        self.log.debug("type of beamtime%s", type(beamtime))
-
-        config = dict(
-            endpoint=self.endpoint,
-            beamtime_id=beamtime,
-            beamline=self.beamline,
-            stream=stream,
-            token=token,
-            nthreads=self.n_threads,
-            timeout_sec=self.timeout
-        )
-
-        self.log.info("Create producer with config=%s", config)
-
-        self.stream_info[stream] = {
-            "producer": asapo_producer.create_producer(**config),
-        }
-
-    def _get_token(self):
-        with open(self.token_file, "r") as f:
-            token = f.read().replace('\n', '')
-
-        return token
-
-    def _get_beamtime(self):
-        (_, _, filenames) = next(os.walk(self.beamtime_file_path))
-        self.log.debug("filesnames = %s", filenames)
-        for name in filenames:
-            search = re.search(self.beamtime_file_regex, name)
-            if search:
-                matched = search.groupdict()
-
-                try:
-                    beamtime = matched["beamtime"]
-                    self.log.debug("Using beamtime %s", beamtime)
-                    return beamtime
-                except KeyError:
-                    raise utils.UsageError("Missing entry for beamtime in "
-                                           "matched result")
-
-        self.log.debug("beamtime_file_path=%s", self.beamtime_file_path)
-        self.log.debug("beamtime_file_regex=%s", self.beamtime_file_regex)
-
-        raise utils.WrongConfiguration("No matching beamtime metadata file "
-                                       "found.")
+        return "metadata"
 
     def process(self, local_path, metadata, data=None):
         """Send the file to the ASAP::O producer
 
-        Asapo stream and index are chosen by the incoming files in format
-        (<scan_id, <file_id>) -> (substream, id)
+        Asapo data_source and index are chosen by the incoming files in format
+        (<scan_id, <file_id>) -> (stream, id)
 
         Args:
             local_path: The absolute path where the file was written
             metadata: The metadata to send as dict
             data (optional): the data to send
         """
+
+        if self._config_is_modified() or self.asapo_worker is None:
+            config = self._create_asapo_config()
+            self.asapo_worker = AsapoWorker(**config)
+
+        self.asapo_worker.send_message(local_path, metadata)
+
+    def _create_asapo_config(self):
+        config = self.config.copy()
         try:
-            stream_id, scan_id, file_id = self._parse_file_name(local_path)
-        except Ignored:
-            self.log.debug("Ignoring file %s", local_path)
-            return
+            user_config = utils.load_config(self.user_config_path)
+            config.update(user_config)
+        except OSError as err:
+            logger.warning("Could not get user config: {}".format(err))
+            logger.warning("Default config is used")
+        return config
 
-        stream = self.stream or stream_id
-
-        if stream not in self.stream_info:
-            self._create_producer(stream=stream)
-
-        # for convenience
-        stream_info = self.stream_info[stream]
-        producer = stream_info["producer"]
-
-        substream = str(scan_id)
-        self.log.debug("using substream %s", substream)
-
-        config = dict(
-            id=file_id + 1,  # files start with index 0 and asapo with 1
-            exposed_path=self._get_exposed_path(metadata),
-            ingest_mode=self.ingest_mode,
-            user_meta=json.dumps({"hidra": metadata}),
-            substream=substream,
-            callback=self._callback
-        )
-
-        if self.data_type == "metadata":
-            config["local_path"] = local_path
-#        elif self.data_type == "data":
-#            config["data"] = data
-        else:
-            raise utils.NotSupported("No correct data_type was specified. "
-                                     "Was setup method executed?")
-
-        producer.send_file(**config)
-
-    @staticmethod
-    def _get_exposed_path(metadata):
-        exposed_path = Path(metadata["relative_path"],
-                            metadata["filename"]).parts
-
-        # TODO this is a workaround
-        # asapo work on the core fs only at the moment thus the current
-        # directory does not exist there
-        if exposed_path[0] == "current":
-            exposed_path = Path().joinpath(*exposed_path[1:]).as_posix()
-        else:
-            raise utils.NotSupported(
-                "Path '{}' is not supported"
-                .format(Path().joinpath(*exposed_path).as_posix())
-            )
-
-        return exposed_path
-
-    def _parse_file_name(self, path):
-        # check for ignored files
-        if re.search(self.ignore_regex, path):
-            raise Ignored("Ignoring file {}".format(path))
-
-        # parse file name
-        search = re.search(self.file_regex, path)
-        if search:
-            matched = search.groupdict()
-        else:
-            self.log.debug("file name: %s", path)
-            self.log.debug("file_regex: %s", self.file_regex)
-            raise utils.UsageError("Does not match file pattern")
-
+    def _get_config_time(self, file_path):
         try:
-            stream = matched["stream"]
-        except KeyError:
-            if self.stream:
-                stream = None
-            else:
-                raise utils.UsageError("Missing entry for stream in matched "
-                                       "result")
-        try:
-            scan_id = matched["scan_id"]
-        except KeyError:
-            raise utils.UsageError("Missing entry for scan_id in matched "
-                                   "result")
-        try:
-            file_id = matched["file_idx_in_scan"]
-        except KeyError:
-            raise utils.UsageError("Missing entry for file_idx_in_scan in "
-                                   "matched result")
+            return path.getmtime(file_path)
+        except OSError as err:
+            logger.warning("Could not get creation time of user config: {}".format(err))
+            return 0
 
-        return stream, int(scan_id), int(file_id)
-
-    def _callback(self, header, err):
-        self.lock.acquire()
-        if err is None:
-            self.log.debug("Successfully sent: %s", header)
-        else:
-            self.log.error("Could not sent: %s, %s", header, err)
-        self.lock.release()
+    def _config_is_modified(self):
+        ts = time()
+        if (ts - self.check_time) > self.timeout:
+            config_time = self._get_config_time(self.user_config_path)
+            if self.config_time != config_time:
+                self.config_time = config_time
+                self.check_time = ts
+                return True
+        self.check_time = ts
+        return False
 
     def stop(self):
         """ Clean up """
+        self.asapo_worker.stop()
 
-        for _, info in iteritems(self.stream_info):
+
+class AsapoWorker:
+    def __init__(self, endpoint, beamtime, token, n_threads, file_regex,
+                 default_data_source=None, timeout=5, beamline='auto', start_file_idx=1):
+        self.endpoint = endpoint
+        self.beamtime = beamtime
+        self.beamline = beamline
+        self.token = token
+        self.n_threads = n_threads
+        self.timeout = timeout
+        self.default_data_source = default_data_source
+        self.file_regex = file_regex
+        self.start_file_idx = start_file_idx
+
+        # Other ingest modes are not yet implemented
+        self.ingest_mode = get_ingest_mode("INGEST_MODE_TRANSFER_METADATA_ONLY")
+        self.lock = threading.Lock()
+        self.data_source_info = {}
+
+    def _create_producer(self, data_source):
+        logger.info("Create producer with data_source=%s", data_source)
+        self.data_source_info[data_source] = {
+            "producer": asapo_producer.create_producer(self.endpoint, "raw", self.beamtime, self.beamline,
+                                                       data_source, self.token, self.n_threads,
+                                                       self.timeout * 1000),
+        }
+
+    def _get_producer(self, data_source):
+        if data_source not in self.data_source_info:
+            self._create_producer(data_source=data_source)
+        return self.data_source_info[data_source]["producer"]
+
+    def send_message(self, local_path, metadata):
+
+        try:
+            data_source, stream, file_idx = self._parse_file_name(local_path)
+            logger.debug("using stream %s", stream)
+        except Ignored:
+            logger.debug("Ignoring file %s", local_path)
+            return
+
+        producer = self._get_producer(data_source)
+        producer.send(id=file_idx + 1 - self.start_file_idx,  # files start with index 0 and asapo with 1
+                      exposed_path=get_exposed_path(metadata),
+                      data=None,
+                      user_meta=json.dumps({"hidra": metadata}),
+                      ingest_mode=self.ingest_mode,
+                      stream=stream,
+                      callback=self._callback)
+
+    def _callback(self, header, err):
+        self.lock.acquire()
+        header = {key: val for key, val in header.items() if key != 'data'}
+        if err is None:
+            logger.debug("Successfully sent: %s", header)
+        else:
+            logger.error("Could not sent: %s, %s", header, err)
+        self.lock.release()
+
+    def _parse_file_name(self, path):
+        matched = parse_file_path(self.file_regex, path)
+        try:
+            data_source = get_entry(matched, "data_source")
+        except utils.UsageError:
+            if self.default_data_source is not None:
+                data_source = self.default_data_source
+            else:
+                raise
+
+        stream = get_entry(matched, "scan_id")
+        file_idx = int(get_entry(matched, "file_idx_in_scan"))
+        return data_source, stream, file_idx
+
+    def stop(self):
+        for _, info in iteritems(self.data_source_info):
             info["producer"].wait_requests_finished(2000)
