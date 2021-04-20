@@ -1,4 +1,5 @@
 # develop
+# 4.3.1
 # 4.3.0
 
 - Centos 7, Debian 10, and manylinux1 packages use Python 3
