@@ -59,7 +59,7 @@ import logging
 from os import path
 import re
 import threading
-from time import time, sleep
+from time import time
 
 from future.utils import iteritems
 
@@ -83,8 +83,8 @@ def get_exposed_path(metadata):
         exposed_path = Path().joinpath(*exposed_path[1:]).as_posix()
     else:
         raise utils.NotSupported(
-            "Path '{}' is not supported"
-                .format(Path().joinpath(*exposed_path).as_posix())
+            "Path '{}' is not supported".format(
+                Path().joinpath(*exposed_path).as_posix())
         )
 
     return exposed_path
@@ -94,7 +94,8 @@ def get_entry(dict_obj, name):
     try:
         return dict_obj[name]
     except KeyError:
-        raise utils.UsageError(f"Missing entry for {name} in matched result")
+        raise utils.UsageError(
+            "Missing entry for {name} in matched result".format(name=name))
 
 
 def get_ingest_mode(mode):
@@ -113,7 +114,8 @@ def check_config(config, required_parameter):
             failed = True
 
     if failed:
-        raise utils.WrongConfiguration("The configuration has missing or wrong parameters.")
+        raise utils.WrongConfiguration(
+            "The configuration has missing or wrong parameters.")
 
 
 def parse_file_path(file_regex, file_path):
@@ -124,7 +126,8 @@ def parse_file_path(file_regex, file_path):
     else:
         logger.debug("file name: %s", file_path)
         logger.debug("file_regex: %s", file_regex)
-        raise Ignored("Does not match file pattern. Ignoring file {}".format(file_path))
+        raise Ignored(
+            "Does not match file pattern. Ignoring file {}".format(file_path))
 
 
 class Ignored(Exception):
@@ -198,7 +201,8 @@ class Plugin(object):
         try:
             return path.getmtime(file_path)
         except OSError as err:
-            logger.warning("Could not get creation time of user config: {}".format(err))
+            logger.warning(
+                "Could not get creation time of user config: {}".format(err))
             return 0
 
     def _config_is_modified(self):
@@ -219,7 +223,8 @@ class Plugin(object):
 
 class AsapoWorker:
     def __init__(self, endpoint, beamtime, token, n_threads, file_regex,
-                 default_data_source=None, timeout=5, beamline='auto', start_file_idx=1):
+                 default_data_source=None, timeout=5, beamline='auto',
+                 start_file_idx=1):
         self.endpoint = endpoint
         self.beamtime = beamtime
         self.beamline = beamline
@@ -231,16 +236,18 @@ class AsapoWorker:
         self.start_file_idx = start_file_idx
 
         # Other ingest modes are not yet implemented
-        self.ingest_mode = get_ingest_mode("INGEST_MODE_TRANSFER_METADATA_ONLY")
+        self.ingest_mode = get_ingest_mode(
+            "INGEST_MODE_TRANSFER_METADATA_ONLY")
         self.lock = threading.Lock()
         self.data_source_info = {}
 
     def _create_producer(self, data_source):
         logger.info("Create producer with data_source=%s", data_source)
         self.data_source_info[data_source] = {
-            "producer": asapo_producer.create_producer(self.endpoint, "raw", self.beamtime, self.beamline,
-                                                       data_source, self.token, self.n_threads,
-                                                       self.timeout * 1000),
+            "producer": asapo_producer.create_producer(
+                self.endpoint, "raw", self.beamtime, self.beamline,
+                data_source, self.token, self.n_threads,
+                self.timeout * 1000),
         }
 
     def _get_producer(self, data_source):
@@ -258,13 +265,15 @@ class AsapoWorker:
             return
 
         producer = self._get_producer(data_source)
-        producer.send(id=file_idx + 1 - self.start_file_idx,  # files start with index 0 and asapo with 1
-                      exposed_path=get_exposed_path(metadata),
-                      data=None,
-                      user_meta=json.dumps({"hidra": metadata}),
-                      ingest_mode=self.ingest_mode,
-                      stream=stream,
-                      callback=self._callback)
+        producer.send(
+            # files start with index 0 and asapo with 1
+            id=file_idx + 1 - self.start_file_idx,
+            exposed_path=get_exposed_path(metadata),
+            data=None,
+            user_meta=json.dumps({"hidra": metadata}),
+            ingest_mode=self.ingest_mode,
+            stream=stream,
+            callback=self._callback)
 
     def _callback(self, header, err):
         self.lock.acquire()
