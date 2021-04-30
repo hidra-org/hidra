@@ -218,7 +218,8 @@ class Plugin(object):
 
     def stop(self):
         """ Clean up """
-        self.asapo_worker.stop()
+        if self.asapo_worker:
+            self.asapo_worker.stop()
 
 
 class AsapoWorker:

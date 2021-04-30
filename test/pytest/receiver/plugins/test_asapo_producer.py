@@ -3,7 +3,7 @@ import sys
 import pytest
 from os import path
 from time import time
-from unittest.mock import create_autospec
+from unittest.mock import create_autospec, patch
 import asapo_producer
 
 receiver_path = (
@@ -23,7 +23,7 @@ def config():
         default_data_source='test001',
         n_threads=1,
         file_regex=".*/(?P<detector>.*)/(?P<scan_id>.*)_scan[0-9]*-(?P<file_idx_in_scan>.*).tif",
-        user_config_path="Path"
+        user_config_path="/path/to/config.yaml"
     )
     return config
 
@@ -80,3 +80,16 @@ def test_config_modified(plugin):
 
     plugin.check_time = time()
     assert not plugin._config_is_modified()
+
+
+def test_plugin_stop(plugin):
+    with patch("plugins.asapo_producer.AsapoWorker", autospec=True) as mock:
+        plugin.process(None, None, None)  # will create a worker
+        assert plugin.asapo_worker is not None
+        plugin.stop()
+        plugin.asapo_worker.stop.assert_called_once_with()
+
+
+def test_plugin_stop_without_worker(plugin):
+    assert plugin.asapo_worker is None
+    plugin.stop()
