@@ -67,8 +67,8 @@ def test_config_time(plugin, metadata):
     assert plugin._get_config_time("bla") == 0
 
     file_path = Path(__file__)
-    conf_time = path.getmtime(file_path)
-    assert conf_time == plugin._get_config_time(file_path)
+    conf_time = path.getmtime(str(file_path))
+    assert conf_time == plugin._get_config_time(str(file_path))
 
 
 def test_config_modified(plugin):
