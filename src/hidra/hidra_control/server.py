@@ -915,11 +915,11 @@ class HidraController(HidraServiceHandling):
 def argument_parsing():
     """Parsing of command line arguments.
     """
-
-    config_file = utils.determine_config_file(fname_base="control_server.yaml")
-
     parser = argparse.ArgumentParser()
 
+    parser.add_argument("--config_file",
+                        type=str,
+                        help="Location of the configuration file")
     parser.add_argument("--beamline",
                         type=str,
                         help="Beamline for which the HiDRA Server "
@@ -936,6 +936,11 @@ def argument_parsing():
                         default=False)
 
     arguments = parser.parse_args()
+
+    config_file = arguments.config_file
+    if config_file is None:
+        config_file = utils.determine_config_file(
+            fname_base="control_server.yaml")
 
     # convert to dict and map to config section
     arguments = {"controlserver": vars(arguments)}
