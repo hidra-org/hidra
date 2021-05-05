@@ -17,7 +17,7 @@ RUN adduser hidra \
 
 COPY hidra /etc/sudoers.d/
 
-COPY --chown=hidra:hidra receiver_p00.yaml control_server.yaml /opt/hidra/conf/
+COPY --chown=hidra:hidra receiver_p00.yaml control_server_p00.yaml /opt/hidra/conf/
 
 COPY post_install.sh /scripts/
 
