@@ -1,9 +1,14 @@
 # develop
 # 4.3.2
+
+- Add --config_file option to control server
+- Fix shutdown of asapo producer
+
 # 4.3.1
 
 - Fix data loss due to unintended deletion of files when data downloading failed
 - Update ASAPO plugin to version 21.03.0
+
 # 4.3.0
 
 - Centos 7, Debian 10, and manylinux1 packages use Python 3
