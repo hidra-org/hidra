@@ -166,9 +166,6 @@ class Plugin(object):
         if "token" in self.config:
             logger.debug("Static token configured.")
 
-    def get_data_type(self):
-        return "metadata"
-
     def process(self, local_path, metadata, data=None):
         """Send the file to the ASAP::O producer
 
