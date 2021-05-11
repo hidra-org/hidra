@@ -39,6 +39,7 @@ import re
 import socket as socket_m
 import subprocess
 import sys
+import tempfile
 
 try:
     import pwd
@@ -369,6 +370,35 @@ def create_sub_dirs(dir_path, subdirs, dirs_not_to_create=()):
 
     if throw_exception:
         raise OSError
+
+
+class TempFile:
+    def __init__(self, temp_file, target_path):
+        self.temp_file = temp_file
+        self.target_path = str(target_path)
+
+    def seek(self, offset, whence=0):
+        return self.temp_file.seek(offset, whence)
+
+    def truncate(self, size=None):
+        return self.temp_file.truncate(size)
+
+    def write(self, data):
+        return self.temp_file.write(data)
+
+    def close(self):
+        if not self.temp_file.closed:
+            self.temp_file.close()
+            os.chmod(self.temp_file.name, 0o644)
+            os.rename(self.temp_file.name, self.target_path)
+
+
+def open_tempfile(filepath):
+    filepath = Path(filepath)
+    f = tempfile.NamedTemporaryFile(
+        suffix='.tmp', prefix=filepath.name + '.', dir=str(filepath.parent),
+        delete=False)
+    return TempFile(f, filepath)
 
 
 def change_user(config):
