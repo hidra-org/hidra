@@ -54,6 +54,7 @@ import requests
 from cleanerbase import CleanerBase
 from datafetcherbase import DataFetcherBase
 from hidra import generate_filepath
+from hidra.utils import open_tempfile, UsageError
 
 __author__ = ('Manuela Kuhn <manuela.kuhn@desy.de>',
               'Jan Garrevoet <jan.garrevoet@desy.de>')
@@ -80,9 +81,12 @@ class Filewriter(object):
         if not self.writing_enabled:
             return
 
+        if self.status["opened"]:
+            raise UsageError("Can only be opened once")
+
         try:
             self.log.debug("Opening '%s'...", self.target_file)
-            self.descriptor = open(self.target_file, "wb")
+            self.descriptor = open_tempfile(self.target_file)
             self.status["opened"] = True
         except IOError as excp:
             err_msg = ("Unable to open target file '%s'.", self.target_file)
@@ -92,7 +96,7 @@ class Filewriter(object):
                 self.create_directory(metadata)
 
                 try:
-                    self.descriptor = open(self.target_file, "wb")
+                    self.descriptor = open_tempfile(self.target_file, "wb")
                     self.status["opened"] = True
                 except Exception:
                     self.log.error(err_msg, exc_info=True)
@@ -128,6 +132,9 @@ class Filewriter(object):
 
         if not self.writing_enabled or not self.status["opened"]:
             return
+
+        if self.status["closed"]:
+            raise UsageError("Can only be closed once")
 
         try:
             self.log.debug("Closing '%s'...", self.target_file)
