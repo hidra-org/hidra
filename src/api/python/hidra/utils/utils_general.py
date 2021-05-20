@@ -374,6 +374,16 @@ def create_sub_dirs(dir_path, subdirs, dirs_not_to_create=()):
 
 class TempFile:
     def __init__(self, temp_file, target_path):
+        """
+        Wraps a temporary file and renames it to the given path on close
+
+        Parameters
+        ----------
+        temp_file: file object
+            An open, temporary file object
+        target_path: str or Path-like
+            The final target path the file will have after calling close
+        """
         self.temp_file = temp_file
         self.target_path = str(target_path)
 
@@ -394,6 +404,14 @@ class TempFile:
 
 
 def open_tempfile(filepath):
+    """
+    Open a temporary file that will be automatically renamed to filepath when
+    closed.
+
+    The file is opened in 'w+b' mode but only the write, seek, truncate, and
+    close methods are supported by the returned object.
+    """
+
     filepath = Path(filepath)
     f = tempfile.NamedTemporaryFile(
         suffix='.tmp', prefix=filepath.name + '.', dir=str(filepath.parent),
