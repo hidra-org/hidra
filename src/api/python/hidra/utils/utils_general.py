@@ -408,14 +408,14 @@ def open_tempfile(filepath):
     Open a temporary file that will be automatically renamed to filepath when
     closed.
 
-    The file is opened in 'w+b' mode but only the write, seek, truncate, and
+    The file is opened in 'wb' mode and only the write, seek, truncate, and
     close methods are supported by the returned object.
     """
 
     filepath = Path(filepath)
     f = tempfile.NamedTemporaryFile(
         suffix='.tmp', prefix=filepath.name + '.', dir=str(filepath.parent),
-        delete=False)
+        delete=False, mode='wb')
     return TempFile(f, filepath)
 
 
