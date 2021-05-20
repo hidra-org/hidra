@@ -139,6 +139,10 @@ def test_plugin_slow_stop(mock_plugin, caplog):
 
 
 def test_plugin_queue_overlow(mock_plugin, caplog):
+    """
+    The queue size limit is not exceeded and put doesn't block when the limit
+    is reached
+    """
     plugin_handler = PluginHandler("mock_plugin", {"foo": 1}, "bar", log)
     mock_plugin.process.side_effect = lambda *args, **kwargs: time.sleep(100)
     t0 = time.time()

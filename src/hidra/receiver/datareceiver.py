@@ -262,8 +262,27 @@ class CheckNetgroup(threading.Thread):
 
 def run_plugin_thread(
         plugin_name, plugin_config, target_dir, data_queue, log, event):
-    # Execute all plugin code on a separate thread to protect main thread from
-    # slow or blocking plugins
+    """
+    Load, configure, and execute a plugin
+
+    This function is intended to execute all plugin code on a separate thread
+    to protect the main thread from slow or blocking plugins.
+
+    Parameters
+    ----------
+    plugin_name: str
+        The name of the module in the plugin directory
+    plugin_config: dict
+        The plugin configuration options
+    target_dir: str
+        The local part of the target directory
+    data_queue: queue.Queue
+        The queue instance use for message passing
+    log: logging.Logger
+        A logger instance
+    even: threading.Event
+        Event instance for receiving the stop signal at shutdown
+    """
     try:
         plugin_m = import_module("plugins." + plugin_name)
         plugin = plugin_m.Plugin(plugin_config)
@@ -300,6 +319,32 @@ def run_plugin_thread(
 
 
 class PluginHandler:
+    """
+    Start and communicate with a plugin thread
+
+    Currently, only a single plugin can be used at a time.
+
+    A plugin is a module with a Plugin class with the following methods:
+    __init__(config):
+        called with a dictionary containing the plugin configuration options
+    setup():
+        called once before processing starts
+    process(local_path, metadata, data):
+        called for each message with the message data and metadata
+    stop():
+        called once at shutdown
+
+    The process method is called with he following arguments:
+    local_path: str
+        The local part of the target directory
+    metadata: dict
+        The Hidra message metadata
+    data: bytes or None
+        None if the "plugin_type" plugin option is "metadata". Currently,
+        "metadata" is this is the only supported type and data is always None
+
+    Note that process is allowed to mutate the data and metadata arguments.
+    """
     def __init__(self, plugin_name, plugin_config, target_dir, log):
         self.plugin_name = plugin_name
         self.plugin_config = plugin_config
@@ -321,6 +366,10 @@ class PluginHandler:
         self.plugin_thread.start()
 
     def put(self, message):
+        # Drop messages if queue size gets too large.
+        # The queue size should be large enough to not drop messages during
+        # short, temporary load spikes or network problems, but small enough to
+        # not exceed available memory. 10000 was chosen by fair dice roll
         if self.plugin_queue.qsize() < 10000:
             self.plugin_queue.put(message)
         else:
@@ -576,6 +625,8 @@ class DataReceiver(object):
 
             try:
                 self.plugin_handler.put(ret_val)
+                # ret_val might have been mutated by the plugin and therefore
+                # should only be reused if this is acceptable
             except Exception:
                 self.log.error("Cannot submit message to plugin")
 
