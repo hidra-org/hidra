@@ -39,6 +39,7 @@ import re
 import socket as socket_m
 import subprocess
 import sys
+import tempfile
 
 try:
     import pwd
@@ -369,6 +370,53 @@ def create_sub_dirs(dir_path, subdirs, dirs_not_to_create=()):
 
     if throw_exception:
         raise OSError
+
+
+class TempFile:
+    def __init__(self, temp_file, target_path):
+        """
+        Wraps a temporary file and renames it to the given path on close
+
+        Parameters
+        ----------
+        temp_file: file object
+            An open, temporary file object
+        target_path: str or Path-like
+            The final target path the file will have after calling close
+        """
+        self.temp_file = temp_file
+        self.target_path = str(target_path)
+
+    def seek(self, offset, whence=0):
+        return self.temp_file.seek(offset, whence)
+
+    def truncate(self, size=None):
+        return self.temp_file.truncate(size)
+
+    def write(self, data):
+        return self.temp_file.write(data)
+
+    def close(self):
+        if not self.temp_file.closed:
+            self.temp_file.close()
+            os.chmod(self.temp_file.name, 0o644)
+            os.rename(self.temp_file.name, self.target_path)
+
+
+def open_tempfile(filepath):
+    """
+    Open a temporary file that will be automatically renamed to filepath when
+    closed.
+
+    The file is opened in 'wb' mode and only the write, seek, truncate, and
+    close methods are supported by the returned object.
+    """
+
+    filepath = Path(filepath)
+    f = tempfile.NamedTemporaryFile(
+        suffix='.tmp', prefix=filepath.name + '.', dir=str(filepath.parent),
+        delete=False, mode='wb')
+    return TempFile(f, filepath)
 
 
 def change_user(config):

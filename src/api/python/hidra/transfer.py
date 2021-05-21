@@ -65,7 +65,8 @@ from .utils import (
     DataSavingError,
     LoggingFunction,
     Base,
-    get_logger
+    get_logger,
+    open_tempfile
 )
 from .control import Control
 
@@ -1715,7 +1716,7 @@ class Transfer(Base):
         except KeyError:
             try:
                 descriptors[filepath] = {
-                    "file": open(filepath, "wb"),
+                    "file": open_tempfile(filepath),
                     "last_chunk_number": None
                 }
                 desc = descriptors[filepath]
@@ -1742,7 +1743,7 @@ class Transfer(Base):
                         os.makedirs(target_path)
 
                         descriptors[filepath] = {
-                            "file": open(filepath, "wb"),
+                            "file": open_tempfile(filepath),
                             "last_chunk_number": None
                         }
                         desc = descriptors[filepath]
@@ -1777,11 +1778,10 @@ class Transfer(Base):
         elif metadata["chunk_number"] < desc["last_chunk_number"]:
 
             if metadata["chunk_number"] == 0:
-                self.log.debug("Reopen file %s", filepath)
-                # close the not finished file
-                desc["file"].close()
-
-                desc["file"] = open(filepath, "wb")
+                self.log.warning("Truncate file %s", filepath)
+                # truncate the not finished file
+                desc["file"].seek(0)
+                desc["file"].truncate()
                 desc["last_chunk_number"] = None
             else:
                 self.log.debug("chunk_number=%s", metadata["chunk_number"])
