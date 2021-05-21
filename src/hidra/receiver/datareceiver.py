@@ -37,6 +37,7 @@ import copy
 from importlib import import_module
 import logging
 import os
+import queue
 import signal
 import threading
 import time
@@ -259,6 +260,146 @@ class CheckNetgroup(threading.Thread):
         self.run_loop = False
 
 
+def run_plugin_thread(
+        plugin_name, plugin_config, target_dir, data_queue, log, event):
+    """
+    Load, configure, and execute a plugin
+
+    This function is intended to execute all plugin code on a separate thread
+    to protect the main thread from slow or blocking plugins.
+
+    Parameters
+    ----------
+    plugin_name: str
+        The name of the module in the plugin directory
+    plugin_config: dict
+        The plugin configuration options
+    target_dir: str
+        The local part of the target directory
+    data_queue: queue.Queue
+        The queue instance use for message passing
+    log: logging.Logger
+        A logger instance
+    even: threading.Event
+        Event instance for receiving the stop signal at shutdown
+    """
+    try:
+        plugin_m = import_module("plugins." + plugin_name)
+        plugin = plugin_m.Plugin(plugin_config)
+        plugin.setup()
+        log.info("Loading '%s' plugin", plugin_name)
+    except Exception:
+        log.error("Could not load '%s' plugin", plugin_name, exc_info=True)
+        return
+
+    while not event.is_set():
+        try:
+            data = data_queue.get(timeout=0.5)
+        except queue.Empty:
+            continue
+
+        try:
+            [metadata, data] = data
+            plugin.process(
+                local_path=generate_filepath(target_dir, metadata),
+                metadata=metadata,
+                data=data
+            )
+        except Exception:
+            log.error("Processing data with '%s' plugin failed.",
+                      plugin_name, exc_info=True)
+
+        data_queue.task_done()
+
+    try:
+        plugin.stop()
+    except Exception:
+        log.error(
+            "Error while stopping '%s' plugin", plugin_name, exc_info=True)
+
+
+class PluginHandler:
+    """
+    Start and communicate with a plugin thread
+
+    Currently, only a single plugin can be used at a time.
+
+    A plugin is a module with a Plugin class with the following methods:
+    __init__(config):
+        called with a dictionary containing the plugin configuration options
+    setup():
+        called once before processing starts
+    process(local_path, metadata, data):
+        called for each message with the message data and metadata
+    stop():
+        called once at shutdown
+
+    The process method is called with he following arguments:
+    local_path: str
+        The local part of the target directory
+    metadata: dict
+        The Hidra message metadata
+    data: bytes or None
+        None if the "plugin_type" plugin option is "metadata". Currently,
+        "metadata" is this is the only supported type and data is always None
+
+    Note that process is allowed to mutate the data and metadata arguments.
+    """
+    def __init__(self, plugin_name, plugin_config, target_dir, log):
+        self.plugin_name = plugin_name
+        self.plugin_config = plugin_config
+        self.log = log
+
+        self.plugin_queue = queue.Queue()
+        self.plugin_event = threading.Event()
+        self.plugin_thread = threading.Thread(
+            target=run_plugin_thread,
+            args=(self.plugin_name, self.plugin_config, target_dir,
+                  self.plugin_queue, self.log, self.plugin_event),
+            daemon=True)  # stop process even if thread is still alive
+
+    def get_data_type(self):
+        return self.plugin_config.get("plugin_type", "metadata")
+
+    def start(self):
+        self.log.info("Starting '%s' plugin thread", self.plugin_name)
+        self.plugin_thread.start()
+
+    def put(self, message):
+        # Drop messages if queue size gets too large.
+        # The queue size should be large enough to not drop messages during
+        # short, temporary load spikes or network problems, but small enough to
+        # not exceed available memory. 10000 was chosen by fair dice roll
+        if self.plugin_queue.qsize() < 10000:
+            self.plugin_queue.put(message)
+        else:
+            self.log.warning(
+                "Skipping '%s' plugin because queue is full", self.plugin_name)
+
+    def stop(self, timeout=60):
+        self.log.info(
+            "Waiting for '%s' plugin thread to finish", self.plugin_name)
+
+        # wait manually because queue.join doesn't have a timeout parameter
+        while self.plugin_queue.qsize() > 0 and timeout > 0:
+            time.sleep(0.1)
+            timeout -= 0.1
+
+        if timeout <= 0:
+            self.log.error(
+                "'%s' plugin queue not empty after timeout", self.plugin_name)
+            timeout = 1  # always give the thread a second to join
+
+        self.plugin_event.set()
+
+        if self.plugin_thread:
+            self.plugin_thread.join(timeout=timeout)
+
+        if self.plugin_thread.is_alive():
+            self.log.error(
+                "'%s' plugin did not join within timeout", self.plugin_name)
+
+
 class DataReceiver(object):
     """Receives data and stores it to disc usign the hidra API.
     """
@@ -280,8 +421,7 @@ class DataReceiver(object):
         self.transfer = None
         self.checking_thread = None
 
-        self.plugin_config = None
-        self.plugin = None
+        self.plugin_handler = None
 
         self.run_loop = True
 
@@ -406,20 +546,13 @@ class DataReceiver(object):
     def _load_plugin(self):
         try:
             plugin_name = self.config["datareceiver"]["plugin"]
-            self.plugin_config = self.config[plugin_name]
+            plugin_config = self.config[plugin_name]
         except KeyError:
             self.log.debug("No plugin specified")
-            self.plugin_config = {}
             return
 
-        try:
-            plugin_m = import_module("plugins." + plugin_name)
-            self.plugin = plugin_m.Plugin(self.plugin_config)
-            self.plugin.setup()
-            self.log.info("Loading plugin %s", plugin_name)
-        except Exception:
-            self.log.error("Could not load plugin", exc_info=True)
-            self.plugin = None
+        self.plugin_handler = PluginHandler(
+            plugin_name, plugin_config, self.target_dir, self.log)
 
     def exec_run(self):
         """Wrapper around run to react to exceptions.
@@ -443,8 +576,9 @@ class DataReceiver(object):
         global _whitelist  # pylint: disable=global-variable-not-assigned
         global _changed_netgroup
 
-        if self.plugin is not None:
-            plugin_type = self.plugin.get_data_type()
+        if self.plugin_handler is not None:
+            plugin_type = self.plugin_handler.get_data_type()
+            self.plugin_handler.start()
         else:
             plugin_type = None
 
@@ -486,20 +620,15 @@ class DataReceiver(object):
                 self.log.error("Storing data...failed.", exc_info=True)
                 raise
 
-            if self.plugin is None or ret_val is None:
+            if self.plugin_handler is None or ret_val is None:
                 continue
 
             try:
-                [metadata, data] = ret_val
-
-                self.plugin.process(
-                    local_path=generate_filepath(self.target_dir, metadata),
-                    metadata=metadata,
-                    data=data
-                )
+                self.plugin_handler.put(ret_val)
+                # ret_val might have been mutated by the plugin and therefore
+                # should only be reused if this is acceptable
             except Exception:
-                self.log.error("Processing data with plugin failed.",
-                               exc_info=True)
+                self.log.error("Cannot submit message to plugin")
 
     def stop(self, store=True):
         """Stop threads, close sockets and cleans up.
@@ -531,8 +660,8 @@ class DataReceiver(object):
             self.transfer.stop()
             self.transfer = None
 
-        if self.plugin is not None:
-            self.plugin.stop()
+        if self.plugin_handler is not None:
+            self.plugin_handler.stop()
 
         if self.checking_thread is not None:
             self.checking_thread.stop()
