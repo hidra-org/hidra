@@ -1,5 +1,9 @@
 # develop
 # 4.4.0
+
+- Write data to a temporary file first and rename to target file when finished
+- Isolate plugins in a separate thread
+
 # 4.3.2
 
 - Add --config_file option to control server
