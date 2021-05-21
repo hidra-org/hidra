@@ -274,13 +274,11 @@ class AsapoWorker:
             callback=self._callback)
 
     def _callback(self, header, err):
-        self.lock.acquire()
         header = {key: val for key, val in header.items() if key != 'data'}
         if err is None:
             logger.debug("Successfully sent: %s", header)
         else:
             logger.error("Could not sent: %s, %s", header, err)
-        self.lock.release()
 
     def _parse_file_name(self, path):
         matched = parse_file_path(self.file_regex, path)
