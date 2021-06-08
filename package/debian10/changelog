@@ -1,3 +1,8 @@
+hidra (4.4.1-1+deb9u5~fsec) stretch; urgency=low
+
+  * Bump version
+
+ -- T. Schoof <tim.schoof@desy.de>  Tue, 08 Jun 2021 15:04:59 +0200
 hidra (4.4.0-1+deb9u5~fsec) stretch; urgency=low
 
   * Bump version

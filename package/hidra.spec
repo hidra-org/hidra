@@ -1,5 +1,5 @@
 Name:		hidra
-Version:	4.4.0
+Version:	4.4.1
 Release:	1%{?dist}
 Summary:	High performance data multiplexing tool
 
@@ -153,6 +153,8 @@ mkdir -p %{buildroot}/var/log/%{name}
 %config(noreplace) /opt/%{name}/conf/control_client.yaml
 
 %changelog
+* Tue Jun 08 2021 T. Schoof <tim.schoof@desy.de> - 4.4.1-1
+- Bump version
 * Fri May 21 2021 T. Schoof <tim.schoof@desy.de> - 4.4.0-1
 - Bump version
 * Thu Apr 29 2021 T. Schoof <tim.schoof@desy.de> - 4.3.2-1
