@@ -96,7 +96,7 @@ class Filewriter(object):
                 self.create_directory(metadata)
 
                 try:
-                    self.descriptor = open_tempfile(self.target_file, "wb")
+                    self.descriptor = open_tempfile(self.target_file)
                     self.status["opened"] = True
                 except Exception:
                     self.log.error(err_msg, exc_info=True)

@@ -367,6 +367,18 @@ def test_control_eiger_store_files(eiger_instance):
         assert wait_for(lambda: hash == calc_hash(target_file))
 
 
+def test_control_eiger_store_files_subfolder(eiger_instance):
+    created_hashes = create_eiger_files(
+        number=1, prefix="subfolder/eiger_store_files_subfolder_{}-".format(
+            eiger_instance["detapi"]),
+        ext="h5")
+
+    for source_file, hash in created_hashes.items():
+        target_file = receiver_beamline / Path(source_file)
+        assert wait_for(target_file.is_file)
+        assert wait_for(lambda: hash == calc_hash(target_file))
+
+
 def test_transfer_after_restart():
     control_client("start", beamline="p00", det="eiger")
     control_client("stop", beamline="p00", det="eiger")
