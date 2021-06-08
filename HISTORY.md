@@ -1,5 +1,8 @@
 # develop
 # 4.4.1
+
+- Fix error storing the first file in a non-existing directory in http fetcher
+
 # 4.4.0
 
 - Write data to a temporary file first and rename to target file when finished
