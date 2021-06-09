@@ -1,4 +1,5 @@
 # develop
+# 4.4.2
 # 4.4.1
 
 - Fix error storing the first file in a non-existing directory in http fetcher
