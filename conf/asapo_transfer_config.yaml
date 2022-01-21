@@ -1,0 +1,35 @@
+# ASAPO produces endpoint
+endpoint: localhost:8000
+
+# ASAPO produces beamtime
+# beamtime: auto
+
+# ASAPO produces token
+# token_path: '/gpfs/asapo/shared/beamline_tokens'
+
+# ASAPO data_source
+# default_data_source: hidra_test
+
+# Number of threds for ASAPO producer
+# n_threads: 1
+
+# Starting file index
+# start_file_idx: 1
+
+# Template to file path, which includes `stream` and `file_idx`
+# file_regex: "current/raw/(?P<scan_id>.*)_(?P<file_idx_in_scan>.*).h5"
+
+# ASAPO send timeout in [s]
+# timeout: 30
+
+# Signal host
+# signal_host: 'localhost'
+
+# Target directory
+# target_dir: ''
+
+# Timeout to reconnect to sender
+# reconnect_timeout: 3
+
+# Set log level for the application
+# log_level: "DEBUG"
