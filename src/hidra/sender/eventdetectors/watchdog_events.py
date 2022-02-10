@@ -463,15 +463,9 @@ class CheckModTime(threading.Thread):
         global _events_marked_to_remove   # pylint: disable=invalid-name
 
         try:
-            # check modification time
-            time_last_modified = os.stat(filepath).st_mtime
-#        except WindowsError:
-#            self.log.error("Unable to get modification time for file: {}"
-#                           .format(filepath), exc_info=True)
-            # remove the file from the observing list
-#            with self.lock
-#                _events_marked_to_remove.append(filepath)
-#            return
+            stat_result = os.stat(filepath)
+            time_last_modified = stat_result.st_mtime
+            file_size = stat_result.st_size
         except Exception:
             self.log.error("Unable to get modification time for file: %s",
                            filepath, exc_info=True)
@@ -488,8 +482,14 @@ class CheckModTime(threading.Thread):
                            filepath, exc_info=True)
             return
 
-        # compare ( >= limit)
-        if time_current - time_last_modified >= self.time_till_closed:
+        if file_size == 0:
+        # Increase threshold for determining that the file is closed because
+        # sometimes empty files are kept open by the detector longer than usual
+            threshold = 10 * self.time_till_closed
+        else:
+            threshold = self.time_till_closed
+
+        if time_current - time_last_modified >= threshold:
             self.log.debug("New closed file detected: %s", filepath)
 
             event_message = get_event_message(filepath, self.mon_dir)
