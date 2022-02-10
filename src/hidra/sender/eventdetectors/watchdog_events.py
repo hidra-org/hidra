@@ -489,7 +489,7 @@ class CheckModTime(threading.Thread):
             return
 
         # compare ( >= limit)
-        if time_current - time_last_modified >= self.time_till_closed:
+        if (time_current - time_last_modified >= self.time_till_closed and os.path.getsize(filepath) > 0):
             self.log.debug("New closed file detected: %s", filepath)
 
             event_message = get_event_message(filepath, self.mon_dir)
