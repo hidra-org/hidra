@@ -70,6 +70,7 @@ from future.utils import iteritems
 from watchdog.observers import Observer
 import watchdog.events
 from watchdog.events import RegexMatchingEventHandler
+import datetime
 
 try:
     # only available for Python3
@@ -465,6 +466,17 @@ class CheckModTime(threading.Thread):
         try:
             # check modification time
             time_last_modified = os.stat(filepath).st_mtime
+            # check modification time
+            # This modification is introduced to take care of the 0kb size files.
+            # 0kb size files will be monitored for 10 minutes and if no modification
+            # will happen then they will be taken out from potential_close_events
+            
+            minutes_diff = ( datetime.datetime.now() - datetime.datetime.fromtimestamp(time_last_modified)).total_seconds() / 60.0
+            file_size_check = os.stat(filepath).st_size
+            
+            if(minutes_diff > 10 and file_size_check == 0):
+                print("Due to the excessive wait in writting", filepath, "has been taken out of queue")
+                _events_marked_to_remove.append(filepath)
 #        except WindowsError:
 #            self.log.error("Unable to get modification time for file: {}"
 #                           .format(filepath), exc_info=True)
