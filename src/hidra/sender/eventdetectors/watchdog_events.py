@@ -60,6 +60,7 @@ from builtins import super  # pylint: disable=redefined-builtin
 
 import bisect
 import copy
+from fileinput import filename
 import logging
 import os
 import threading
@@ -464,8 +465,8 @@ class CheckModTime(threading.Thread):
         global _events_marked_to_remove   # pylint: disable=invalid-name
 
         try:
-            # check modification time
             time_last_modified = os.stat(filepath).st_mtime
+            
             # check modification time
             # This modification is introduced to take care of the 0kb size files.
             # 0kb size files will be monitored for 10 minutes and if no modification
@@ -477,6 +478,7 @@ class CheckModTime(threading.Thread):
             if(minutes_diff > 10 and file_size_check == 0):
                 print("Due to the excessive wait in writting", filepath, "has been taken out of queue")
                 _events_marked_to_remove.append(filepath)
+            
 #        except WindowsError:
 #            self.log.error("Unable to get modification time for file: {}"
 #                           .format(filepath), exc_info=True)
@@ -501,7 +503,8 @@ class CheckModTime(threading.Thread):
             return
 
         # compare ( >= limit)
-        if (time_current - time_last_modified >= self.time_till_closed and os.path.getsize(filepath) > 0):
+        # file_size_check > 0 Check is introduced to stop the file transfer when they have 0kb size 
+        if (time_current - time_last_modified >= self.time_till_closed and file_size_check > 0):
             self.log.debug("New closed file detected: %s", filepath)
 
             event_message = get_event_message(filepath, self.mon_dir)
