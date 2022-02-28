@@ -465,8 +465,21 @@ class CheckModTime(threading.Thread):
         global _events_marked_to_remove   # pylint: disable=invalid-name
 
         try:
-            time_last_modified = os.stat(filepath).st_mtime
-            file_size = os.stat(filepath).st_size
+            
+            stat_result = os.stat(filepath)
+            time_last_modified = stat_result.st_mtime
+            file_size = stat_result.st_size
+            
+            def file_time_monitoring():         
+                event_message = get_event_message(filepath, self.mon_dir)
+                self.log.debug("event_message: %s", event_message)
+
+                # add to result list
+                _event_store.add(event_message)
+
+                with self.lock:
+                    _events_marked_to_remove.append(filepath)
+            
             
             # check modification time
             # This modification is introduced to take care of the 0kb size files.
@@ -504,34 +517,18 @@ class CheckModTime(threading.Thread):
         # compare ( >= limit)
         if (time_current - time_last_modified >= self.time_till_closed * 4 and file_size == 0 ):
             self.log.debug("0kb file detected: %s", filepath)
-            
-            event_message = get_event_message(filepath, self.mon_dir)
-            self.log.debug("event_message: %s", event_message)
-
-            # add to result list
-            _event_store.add(event_message)
-
-            with self.lock:
-                _events_marked_to_remove.append(filepath)
-        else:
-            self.log.debug("File was last modified %s sec ago: %s",
-                           time_current - time_last_modified, filepath)
-            
+            file_time_monitoring()
+                
+                
         # file_size > 0 Check is introduced to stop the file transfer when they have 0kb size 
-        if (time_current - time_last_modified >= self.time_till_closed and file_size > 0):
+        elif (time_current - time_last_modified >= self.time_till_closed and file_size > 0):
             self.log.debug("New closed file detected: %s", filepath)
-
-            event_message = get_event_message(filepath, self.mon_dir)
-            self.log.debug("event_message: %s", event_message)
-
-            # add to result list
-            _event_store.add(event_message)
-
-            with self.lock:
-                _events_marked_to_remove.append(filepath)
+            file_time_monitoring()
+            
         else:
             self.log.debug("File was last modified %s sec ago: %s",
                            time_current - time_last_modified, filepath)
+            
             
 
     def stop(self):
