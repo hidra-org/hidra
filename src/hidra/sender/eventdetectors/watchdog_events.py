@@ -54,19 +54,13 @@ Example config:
 from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
-
 # requires dependency on future
 from builtins import super  # pylint: disable=redefined-builtin
-
-import bisect
-import copy
-
 import logging
 import os
 import threading
 import time
 from multiprocessing.dummy import Pool as ThreadPool
-
 from future.utils import iteritems
 from watchdog.observers import Observer
 import watchdog.events
@@ -463,12 +457,10 @@ class CheckModTime(threading.Thread):
         global _event_store   # pylint: disable=invalid-name
         global _events_marked_to_remove   # pylint: disable=invalid-name
 
-        try:
-            
+        try:           
             stat_result = os.stat(filepath)
             time_last_modified = stat_result.st_mtime
-            file_size = stat_result.st_size
-                       
+            file_size = stat_result.st_size                  
         except Exception:
             self.log.error("Unable to get modification time for file: %s",
                            filepath, exc_info=True)
@@ -492,7 +484,7 @@ class CheckModTime(threading.Thread):
         else:
             threshold = self.time_till_closed
             
-        if (time_current - time_last_modified >= threshold):
+        if time_current - time_last_modified >= threshold:
             self.log.debug("New closed file detected: %s", filepath)
 
             event_message = get_event_message(filepath, self.mon_dir)
