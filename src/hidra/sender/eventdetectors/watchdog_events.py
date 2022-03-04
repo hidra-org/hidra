@@ -60,7 +60,7 @@ from builtins import super  # pylint: disable=redefined-builtin
 
 import bisect
 import copy
-from fileinput import filename
+
 import logging
 import os
 import threading
@@ -71,7 +71,6 @@ from future.utils import iteritems
 from watchdog.observers import Observer
 import watchdog.events
 from watchdog.events import RegexMatchingEventHandler
-import datetime
 
 try:
     # only available for Python3
@@ -469,35 +468,7 @@ class CheckModTime(threading.Thread):
             stat_result = os.stat(filepath)
             time_last_modified = stat_result.st_mtime
             file_size = stat_result.st_size
-            
-            def file_time_monitoring():         
-                event_message = get_event_message(filepath, self.mon_dir)
-                self.log.debug("event_message: %s", event_message)
-
-                # add to result list
-                _event_store.add(event_message)
-
-                with self.lock:
-                    _events_marked_to_remove.append(filepath)
-            
-            
-            # check modification time
-            # This modification is introduced to take care of the 0kb size files.
-            # 0kb size files will be monitored for 10 minutes and if no modification
-            # will happen then they will be taken out from potential_close_events
-            
-            #minutes_diff = ( datetime.datetime.now() - datetime.datetime.fromtimestamp(time_last_modified)).total_seconds() / 60.0            
-            #if(minutes_diff > 10 and file_size_check == 0):
-            #    print("Due to the excessive wait in writting", filepath, "has been taken out of queue")
-            #    _events_marked_to_remove.append(filepath)
-            
-#        except WindowsError:
-#            self.log.error("Unable to get modification time for file: {}"
-#                           .format(filepath), exc_info=True)
-            # remove the file from the observing list
-#            with self.lock
-#                _events_marked_to_remove.append(filepath)
-#            return
+                       
         except Exception:
             self.log.error("Unable to get modification time for file: %s",
                            filepath, exc_info=True)
@@ -513,23 +484,28 @@ class CheckModTime(threading.Thread):
             self.log.error("Unable to get current time for file: %s",
                            filepath, exc_info=True)
             return
-
-        # compare ( >= limit)
-        if (time_current - time_last_modified >= self.time_till_closed * 4 and file_size == 0 ):
-            self.log.debug("0kb file detected: %s", filepath)
-            file_time_monitoring()
-                
-                
-        # file_size > 0 Check is introduced to stop the file transfer when they have 0kb size 
-        elif (time_current - time_last_modified >= self.time_till_closed and file_size > 0):
-            self.log.debug("New closed file detected: %s", filepath)
-            file_time_monitoring()
+           
+        if file_size == 0:
+        # Increase threshold for determining that the file is closed because 
+        # sometimes empty files are kept open by the detector longer than usual
+            threshold = 10 * self.time_till_closed
+        else:
+            threshold = self.time_till_closed
             
+        if (time_current - time_last_modified >= threshold):
+            self.log.debug("New closed file detected: %s", filepath)
+
+            event_message = get_event_message(filepath, self.mon_dir)
+            self.log.debug("event_message: %s", event_message)
+
+            # add to result list
+            _event_store.add(event_message)
+
+            with self.lock:
+                _events_marked_to_remove.append(filepath)
         else:
             self.log.debug("File was last modified %s sec ago: %s",
-                           time_current - time_last_modified, filepath)
-            
-            
+                           time_current - time_last_modified, filepath)      
 
     def stop(self):
         """ Stopping the loop and closing the pool
