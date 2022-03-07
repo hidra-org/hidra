@@ -54,13 +54,18 @@ Example config:
 from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
+
 # requires dependency on future
 from builtins import super  # pylint: disable=redefined-builtin
+
+import bisect
+import copy
 import logging
 import os
 import threading
 import time
 from multiprocessing.dummy import Pool as ThreadPool
+
 from future.utils import iteritems
 from watchdog.observers import Observer
 import watchdog.events
@@ -457,10 +462,16 @@ class CheckModTime(threading.Thread):
         global _event_store   # pylint: disable=invalid-name
         global _events_marked_to_remove   # pylint: disable=invalid-name
 
-        try:           
-            stat_result = os.stat(filepath)
-            time_last_modified = stat_result.st_mtime
-            file_size = stat_result.st_size                  
+        try:
+            # check modification time
+            time_last_modified = os.stat(filepath).st_mtime
+#        except WindowsError:
+#            self.log.error("Unable to get modification time for file: {}"
+#                           .format(filepath), exc_info=True)
+            # remove the file from the observing list
+#            with self.lock
+#                _events_marked_to_remove.append(filepath)
+#            return
         except Exception:
             self.log.error("Unable to get modification time for file: %s",
                            filepath, exc_info=True)
@@ -476,15 +487,9 @@ class CheckModTime(threading.Thread):
             self.log.error("Unable to get current time for file: %s",
                            filepath, exc_info=True)
             return
-           
-        if file_size == 0:
-        # Increase threshold for determining that the file is closed because 
-        # sometimes empty files are kept open by the detector longer than usual
-            threshold = 10 * self.time_till_closed
-        else:
-            threshold = self.time_till_closed
-            
-        if time_current - time_last_modified >= threshold:
+
+        # compare ( >= limit)
+        if time_current - time_last_modified >= self.time_till_closed:
             self.log.debug("New closed file detected: %s", filepath)
 
             event_message = get_event_message(filepath, self.mon_dir)
@@ -497,7 +502,7 @@ class CheckModTime(threading.Thread):
                 _events_marked_to_remove.append(filepath)
         else:
             self.log.debug("File was last modified %s sec ago: %s",
-                           time_current - time_last_modified, filepath)      
+                           time_current - time_last_modified, filepath)
 
     def stop(self):
         """ Stopping the loop and closing the pool
