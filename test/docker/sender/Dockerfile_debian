@@ -15,3 +15,8 @@ ARG user_uid
 RUN adduser --system --uid $user_uid hidra
 
 WORKDIR /hidra
+
+# Workaround for segfault in apt install -y ./build/debian9/...
+# See https://unix.stackexchange.com/a/227636
+# and https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=753941
+RUN echo "APT::Cache-start 200000000;" > /etc/apt/apt.conf.d/00bugs
