@@ -100,7 +100,9 @@ cp conf/datamanager.yaml conf/datareceiver.yaml conf/base_receiver.yaml conf/bas
 
 # systemd unit files
 mkdir -p %{buildroot}/%{_unitdir}
+mkdir %{buildroot}/%{_unitdir}/hidra@.service.d
 cp scripts/init_scripts/*.service %{buildroot}/%{_unitdir}/
+cp scripts/init_scripts/hidra@.service.d/transfer-client.conf %{buildroot}/%{_unitdir}/hidra@.service.d/
 
 # log directory
 mkdir -p %{buildroot}/var/log/%{name}
@@ -130,6 +132,7 @@ mkdir -p %{buildroot}/var/log/%{name}
 /opt/%{name}/src/hidra/hidra_control/server.pyc
 /opt/%{name}/src/hidra/hidra_control/server.pyo
 %{_unitdir}/*.service
+%{_unitdir}/hidra@.service.d/*.conf
 %dir /opt/%{name}/conf
 %config(noreplace) /opt/%{name}/conf/*
 %attr(1777,root,root) /var/log/%{name}
