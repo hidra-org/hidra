@@ -60,8 +60,7 @@ class TestCheckNetgroup(TestBase):
         super().setUp()
 
     @mock.patch("hidra.utils.execute_ldapsearch")
-    @mock.patch("threading.Thread")
-    def test_check_netgroup(self, mock_thread, mock_ldap):
+    def test_check_netgroup(self, mock_ldap):
         """Simulate netgroup changes.
         """
         # pylint: disable=unused-argument
