@@ -126,8 +126,7 @@ def parse_file_path(file_regex, file_path):
     else:
         logger.debug("file name: %s", file_path)
         logger.debug("file_regex: %s", file_regex)
-        raise Ignored(
-            "Does not match file pattern. Ignoring file {}".format(file_path))
+        return None
 
 
 class Ignored(Exception):
@@ -230,8 +229,20 @@ class AsapoWorker:
         self.n_threads = n_threads
         self.timeout = timeout
         self.default_data_source = default_data_source
-        self.file_regex = file_regex
         self.start_file_idx = start_file_idx
+
+        # Set and validate regexp
+        expected_keys = ["scan_id", "file_idx_in_scan"]
+        if self.default_data_source is None:
+            expected_keys.append("data_source")
+        try:
+            self.file_regex = re.compile(file_regex)
+        except Exception as e:
+            raise utils.UsageError("Compilation if regexp %s failed", file_regex)
+
+        for expected_key in expected_keys:
+            if expected_key not in self.file_regex.groupindex:
+                raise utils.UsageError("Expected regexp group %s is not in regexp", expected_key)
 
         # Other ingest modes are not yet implemented
         self.ingest_mode = get_ingest_mode(
@@ -255,10 +266,11 @@ class AsapoWorker:
 
     def send_message(self, local_path, metadata):
 
-        try:
-            data_source, stream, file_idx = self._parse_file_name(local_path)
+        file_info = self._parse_file_name(local_path)
+        if file_info:
+            data_source, stream, file_idx = file_info
             logger.debug("using stream %s", stream)
-        except Ignored:
+        else:
             logger.debug("Ignoring file %s", local_path)
             return
 
@@ -281,18 +293,18 @@ class AsapoWorker:
             logger.error("Could not sent: %s, %s", header, err)
 
     def _parse_file_name(self, path):
-        matched = parse_file_path(self.file_regex, path)
         try:
-            data_source = get_entry(matched, "data_source")
-        except utils.UsageError:
+            matched = parse_file_path(self.file_regex, path)
             if self.default_data_source is not None:
                 data_source = self.default_data_source
             else:
-                raise
+                data_source = get_entry(matched, "data_source")
 
-        stream = get_entry(matched, "scan_id")
-        file_idx = int(get_entry(matched, "file_idx_in_scan"))
-        return data_source, stream, file_idx
+            stream = get_entry(matched, "scan_id")
+            file_idx = int(get_entry(matched, "file_idx_in_scan"))
+            return data_source, stream, file_idx
+        except Exception as e:
+            return None
 
     def stop(self):
         for _, info in iteritems(self.data_source_info):
