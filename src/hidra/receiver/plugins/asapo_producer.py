@@ -297,11 +297,11 @@ class AsapoWorker:
 
     def _parse_file_name(self, path):
         """
-        Parse file path and extruct asapo-related parameters
+        Parse file path and extract asapo-related parameters
 
-        self.file_regex is a compiled regex, that contain all expected groups
-        If path does not match regex method returns None
-        If path matches, but conversion to int is Failed method raises ValueError
+        self.file_regex is a compiled regex that contains all expected groups.
+        If path does not match regex, method returns None.
+        If path matches, but conversion to int fails, method raises ValueError.
 
         Args:
             path: The absolute path where the file was written
