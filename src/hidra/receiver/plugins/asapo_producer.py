@@ -265,17 +265,16 @@ class AsapoWorker:
         return self.data_source_info[data_source]["producer"]
 
     def send_message(self, local_path, metadata):
-
         try:
             file_info = self._parse_file_name(local_path)
-            if file_info:
-                data_source, stream, file_idx = file_info
-                logger.debug("using stream %s", stream)
-            else:
-                logger.debug("Ignoring file %s", local_path)
-                return
         except ValueError:
             logger.warning("Can not parse file path %s. Ignore file", local_path)
+            return
+        if file_info:
+            data_source, stream, file_idx = file_info
+            logger.debug("using stream %s", stream)
+        else:
+            logger.debug("Ignoring file %s", local_path)
             return
 
         producer = self._get_producer(data_source)
@@ -297,20 +296,34 @@ class AsapoWorker:
             logger.error("Could not sent: %s, %s", header, err)
 
     def _parse_file_name(self, path):
+        """
+        Parse file path and extruct asapo-related parameters
+
+        self.file_regex is a compiled regex, that contain all expected groups
+        If path does not match regex method returns None
+        If path matches, but conversion to int is Failed method raises ValueError
+
+        Args:
+            path: The absolute path where the file was written
+        Returns:
+            data_source: Asapo data source
+            stream: Asapo stream name
+            file_idx: file index
+        """
         matched = parse_file_path(self.file_regex, path)
         if matched is None:
             return None
-        try:
-            if "data_source" in matched:
-                data_source = get_entry(matched, "data_source")
-            else:
-                data_source = self.default_data_source
+        if "data_source" in matched:
+            data_source = get_entry(matched, "data_source")
+        else:
+            data_source = self.default_data_source
 
-            stream = get_entry(matched, "scan_id")
+        stream = get_entry(matched, "scan_id")
+        try:
             file_idx = int(get_entry(matched, "file_idx_in_scan"))
-            return data_source, stream, file_idx
         except Exception as e:
             raise ValueError("Can not extract values from path %s", path)
+        return data_source, stream, file_idx
 
     def stop(self):
         for _, info in iteritems(self.data_source_info):
