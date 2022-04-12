@@ -1,0 +1,5 @@
+#!/bin/sh
+set -e
+systemctl daemon-reload
+/bin/chmod 1777 /var/log/hidra
+#DEBHELPER#
