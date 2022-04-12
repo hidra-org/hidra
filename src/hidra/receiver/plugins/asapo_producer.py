@@ -321,7 +321,7 @@ class AsapoWorker:
         stream = get_entry(matched, "scan_id")
         try:
             file_idx = int(get_entry(matched, "file_idx_in_scan"))
-        except Exception as e:
+        except ValueError:
             raise ValueError("Can not extract values from path %s", path)
         return data_source, stream, file_idx
 
