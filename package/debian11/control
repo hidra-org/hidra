@@ -30,6 +30,6 @@ Description: hidra control client executable
 
 Package: python3-hidra
 Architecture: any
-Depends: ${misc:Depends}, python3, python3-zmq (>= 14.6.0), python3-yaml, python3-ldap3
+Depends: ${misc:Depends}, python3, python3-zmq (>= 14.6.0), python3-yaml, python3-ldap3, iputils-ping
 Description: python modules for hidra
  Python modules for HiDRA ( High performance data multiplexing tool )
