@@ -147,6 +147,9 @@ build_docker_image()
 build_package()
 {
     cmd="cd /external/hidra; dpkg-buildpackage -us -uc -sa"
+    if [[ ${DEBIAN_VERSION} -ge 11 ]]; then
+        cmd="$cmd && lintian"
+    fi
 
     IN_DOCKER_DIR=/external
 

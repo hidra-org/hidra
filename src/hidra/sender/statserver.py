@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 # Copyright (C) 2015  DESY, Manuela Kuhn, Notkestr. 85, D-22607 Hamburg
 #
 # HiDRA is a generic tool set for high performance data multiplexing with

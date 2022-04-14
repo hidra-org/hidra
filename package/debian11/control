@@ -1,7 +1,7 @@
 Source: hidra
 Section: science
 Priority: optional
-Maintainer: Manuela Kuhn <manuela.kuhn@desy.de>
+Maintainer: T. Schoof <tim.schoof@desy.de>
 Build-Depends: debhelper (>= 9.0.0), dh-python,
     python3, python3-dev, python3-setuptools
 Standards-Version: 4.1.4
@@ -9,7 +9,7 @@ Homepage: https://github.com/hidra-org/hidra
 
 Package: hidra
 Architecture: any
-Depends: python3-hidra (= ${binary:Version}), python3, systemd, python3-inotifyx (>= 0.2.2), python3-setproctitle, python3-future
+Depends: ${misc:Depends}, python3-hidra (= ${binary:Version}), python3, systemd, python3-inotifyx (>= 0.2.2), python3-setproctitle, python3-future
 Description: High performance data multiplexing tool
  HiDRA is a generic tool set for high performance data multiplexing
  with different qualities of service and is based on Python and ZeroMQ.
@@ -24,12 +24,12 @@ Description: High performance data multiplexing tool
 
 Package: hidra-control-client
 Architecture: any
-Depends: python3-hidra (= ${binary:Version}), python3
-Description: The hidra control client
+Depends: ${misc:Depends}, python3-hidra (= ${binary:Version}), python3
+Description: hidra control client executable
  For machines like Eiger detectors which only need the control client
 
 Package: python3-hidra
 Architecture: any
-Depends: python3, python3-zmq (>= 14.6.0), python3-yaml, python3-ldap3
+Depends: ${misc:Depends}, python3, python3-zmq (>= 14.6.0), python3-yaml, python3-ldap3
 Description: python modules for hidra
  Python modules for HiDRA ( High performance data multiplexing tool )
