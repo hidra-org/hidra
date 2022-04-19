@@ -1,5 +1,10 @@
 # develop
 # 4.4.2
+
+- Delay emitting watchdog events for empty files
+- Build package for Debian 11
+- Check regex validity in AsapoWorker constructor
+
 # 4.4.1
 
 - Fix error storing the first file in a non-existing directory in http fetcher
