@@ -38,6 +38,7 @@ description: Netgroup for nodes on Beamline P00
 nisNetgroupTriple: (sender-freeze.hidra.test,-,)
 nisNetgroupTriple: (sender-debian.hidra.test,-,)
 nisNetgroupTriple: (sender-debian10.hidra.test,-,)
+nisNetgroupTriple: (sender-debian11.hidra.test,-,)
 nisNetgroupTriple: (sender-suse.hidra.test,-,)
 nisNetgroupTriple: (eiger.hidra.test,-,)
 nisNetgroupTriple: (control-client.hidra.test,-,)

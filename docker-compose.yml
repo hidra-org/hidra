@@ -165,6 +165,31 @@ services:
             - ldap
         tty: true
 
+    sender-debian11:
+        image: hidratest-sender-debian11
+        build:
+            context: test/docker/sender
+            dockerfile: Dockerfile_debian11
+            args:
+                user_uid: ${UID}
+        platform: linux
+        container_name: sender-debian11
+        hostname: sender-debian11
+        domainname: hidra.test
+        init: true
+        networks:
+            hidra:
+                aliases:
+                    - sender-debian11.hidra.test
+        volumes:
+            - ./build:/hidra/build
+            - ${HIDRA_TESTDIR}/sender-debian11/ramdisk:/ramdisk
+        ports:
+            - "5689:5689"
+        depends_on:
+            - ldap
+        tty: true
+
     sender-suse:
         image: hidratest-sender-suse
         build:
