@@ -1,7 +1,7 @@
 
 from ctypes import *
 
-def find_hostname(netgroup):
+def get_hostname(netgroup):
 
     libc = CDLL("libc.so.6")
     if (libc != None):
@@ -26,6 +26,6 @@ def find_hostname(netgroup):
     return(hosts)
 
 
-hosts = find_hostname(b"a3p62-hosts")
+hosts = get_hostname(b"a3p62-hosts")
 print(hosts)
 print("done")
