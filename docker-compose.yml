@@ -6,6 +6,11 @@ services:
         platform: linux
         container_name: ldap
         domainname: hidra.test
+        environment:
+            # Don't use quotes (single or double) for env values:
+            # https://github.com/osixia/docker-openldap/issues/479
+            - LDAP_BASE_DN=dc=hidra,dc=test
+            - LDAP_DOMAIN=hidra.test
         networks:
             hidra:
                 aliases:
@@ -29,6 +34,9 @@ services:
             - "5680:5680"
         depends_on:
             - ldap
+        cap_add:
+            # allow attaching a debugger inside the container
+            - SYS_PTRACE
         tty: true
 
     eiger:

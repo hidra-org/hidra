@@ -338,6 +338,30 @@ def eiger_instance(stopped_eiger_instance, request):
     control_client("stop", beamline="p00", det="eiger")
 
 
+@pytest.fixture()
+def eiger_instance_not_in_netgroup():
+    control_client("start", beamline="p00", det="eiger")
+    # Remove eiger from ldap netgroup
+    cmd = [
+        "ldapmodify", "-x",
+        "-D", "cn=admin,dc=hidra,dc=test",
+        "-w", "admin",
+        "-H", "ldap://localhost",
+        "-f", "remove_eiger.ldif",
+        "-v"]
+    docker_run("ldap", cmd)
+    yield eiger_instance
+    # Recreate complete ldap netgroup
+    cmd = [
+        "ldapmodify", "-x",
+        "-D", "cn=admin,dc=hidra,dc=test",
+        "-w", "admin",
+        "-H", "ldap://localhost",
+        "-f", "add_all.ldif",
+        "-v"]
+    docker_run("ldap", cmd)
+
+
 def test_control_status_stop():
     control_client("start", beamline="p00", det="eiger")
     control_client("stop", beamline="p00", det="eiger")
@@ -491,6 +515,42 @@ def test_control_eiger_storing_files_failed(eiger_instance):
         assert "Deleting file" not in stdout
         assert stderr == ""
         assert (eiger_data_path / source_file).is_file()
+
+
+def test_control_client_beamline_not_in_netgroup():
+    ret = control_client("start", beamline="p01", det="eiger")
+    assert (
+        "Host control-client.hidra.test is not contained in netgroup of"
+        " beamline p01"
+        in ret.stdout
+    )
+
+
+def test_control_client_detector_not_in_netgroup():
+    ret = control_client("start", beamline="p00", det="eiger2")
+    assert (
+        "Host eiger2 is not contained in netgroup of beamline p00"
+        in ret.stdout
+    )
+
+
+def test_control_client_get_status_old_instances(
+        eiger_instance_not_in_netgroup):
+    ret = control_client("status", beamline="p00", det="eiger")
+    assert "Not allowed to do this action." in ret.stdout
+
+
+def test_control_client_get_old_instances(
+        eiger_instance_not_in_netgroup):
+    ret = control_client("getinstances", beamline="p00")
+    assert "eiger.hidra.test" in ret.stdout
+
+
+def test_control_client_stop_old_instances(eiger_instance_not_in_netgroup):
+    ret = control_client("stop", beamline="p00", det="eiger")
+    assert "Stopping HiDRA (detector mode): DONE" in ret.stdout
+    ret = control_client("getinstances", beamline="p00")
+    assert "eiger.hidra.test" not in ret.stdout
 
 
 def test_sender_status_stopped(stopped_sender_instance):

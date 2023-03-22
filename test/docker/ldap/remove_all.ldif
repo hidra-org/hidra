@@ -1,0 +1,4 @@
+dn: cn=a3p00-hosts,ou=netgroup,o=hidra
+changetype: modify
+replace: nisNetgroupTriple
+nisNetgroupTriple: (foo.test,-,)

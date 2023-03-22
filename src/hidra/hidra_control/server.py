@@ -1137,6 +1137,9 @@ class ControlServer(utils.Base):
 
     def _decode_message(self, msg):
         """Decode the message
+
+        The action part is not decoded and instead the original bytes are
+        returned.
         """
 
         try:
@@ -1186,9 +1189,9 @@ class ControlServer(utils.Base):
     def exec_msg(self, msg):
         """
         [b"IS_ALIVE"]
-            return "OK"
+            return b"OK"
         [b"do", host_id, det_id, b"start"]
-            return "DONE"
+            return b"DONE"
         [b"bye", host_id, detector]
         """
 
@@ -1220,10 +1223,10 @@ class ControlServer(utils.Base):
             return self.reply_codes.error
 
         # bypass detector checking for this
-        if action == "do" and param == "get_instances":
+        if action == b"do" and param == "get_instances":
             # allow the beamline to see it's running instances
-            return self._get_instances()
-        elif action == "do" and param == "stop":
+            return json.dumps(self._get_instances()).encode()
+        elif action == b"do" and param == "stop":
             # allow the beamline to stop it's old instances
             if det_id in self._get_instances():
                 return self._stop_old_instance(det_id)
@@ -1303,7 +1306,7 @@ class ControlServer(utils.Base):
         """Get the started hidra instances
 
         Returns:
-            List of detectors started for this beamline as json dump.
+            List of detectors started for this beamline.
         """
 
         try:
@@ -1312,7 +1315,8 @@ class ControlServer(utils.Base):
             # something went wrong when trying to start the instance
             bl_instances = {}
 
-        instances = json.dumps(list(bl_instances.keys())).encode()
+        instances = list(bl_instances.keys())
+
         self.log.debug("Running instances are: %s", instances)
 
         return instances
