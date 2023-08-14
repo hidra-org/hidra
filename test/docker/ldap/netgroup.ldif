@@ -1,10 +1,4 @@
-dn: olcDatabase={-1}frontend,cn=config
-changetype: modify
-delete: olcAccess
--
-add: olcAccess
-olcAccess: to * by * manage
-
+# Remove ACLs
 dn: olcDatabase={1}mdb,cn=config
 changetype: modify
 delete: olcAccess
@@ -12,6 +6,7 @@ delete: olcAccess
 add: olcAccess
 olcAccess: to * by * manage
 
+# Route queries without suffix to this database
 dn: olcDatabase={1}mdb,cn=config
 changetype: modify
 delete: olcSuffix
@@ -19,6 +14,7 @@ delete: olcSuffix
 add: olcSuffix
 olcSuffix:
 
+# Add entries
 dn: o=hidra
 changetype: add
 objectClass: organization
