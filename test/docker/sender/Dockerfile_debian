@@ -2,6 +2,15 @@ FROM debian:9
 
 COPY *deb9*.deb /debs/
 
+
+# Fix archived repositories:
+# https://www.geekersdigest.com/apt-etc-apt-sources-list-for-every-debian-release/
+RUN echo "\
+    deb http://archive.debian.org/debian/ stretch main contrib non-free\n\
+    deb http://archive.debian.org/debian/ stretch-proposed-updates main contrib non-free\n\
+    deb http://archive.debian.org/debian-security stretch/updates main contrib non-free" \
+    > /etc/apt/sources.list
+
 RUN apt update && apt install -y systemd python-watchdog /debs/*
 
 # setup systemctl-replacement-script

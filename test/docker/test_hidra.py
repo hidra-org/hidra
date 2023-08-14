@@ -597,6 +597,22 @@ def test_sender_file_writing_nested_subdir(sender_instance):
 
 
 def test_receiver_groups():
+    # Without -f, pgrep only matches the first 15 characters
+    # But with -f, prgrep also matches the script
+    script = (
+        "pids=$(pgrep hidra-receiver -d \" \"); for pid in ${pids}; do"
+        " echo -n \"$pid: \";"
+        " grep Groups /proc/$pid/status | grep -o -E \"[0-9 ]*\"; done")
+    out = docker_run("asap3-p00", ["sh", "-c", script])
+    for line in out.stdout.strip().split("\n"):
+        print(line)
+        pid, groups = line.split(":")
+        # gids are hard coded in receiver/Dockerfile
+        assert "1234" in groups
+        assert "2345" in groups
+
+
+def test_sender_groups(eiger_instance):
     script = (
         "pids=$(pgrep hidra_p00 -d \" \"); for pid in ${pids}; do"
         " echo -n \"$pid: \";"
