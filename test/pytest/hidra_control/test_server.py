@@ -4,13 +4,6 @@ import sys
 import yaml
 from unittest.mock import patch
 
-root_path = Path(__file__).parent.parent.parent.parent
-
-hidra_control_path = root_path / "src/hidra/hidra_control"
-default_config_path = root_path / "conf/control_server.yaml"
-assert hidra_control_path.is_dir()
-sys.path.insert(0, hidra_control_path)
-
 from server import argument_parsing  # noqa
 
 

@@ -6,11 +6,6 @@ from time import time
 from unittest.mock import create_autospec, patch
 import asapo_producer
 
-receiver_path = (
-        Path(__file__).parent.parent.parent.parent.parent / "src/hidra/receiver")
-assert receiver_path.is_dir()
-sys.path.insert(0, receiver_path)
-
 from plugins.asapo_producer import Plugin, AsapoWorker  # noqa
 
 
