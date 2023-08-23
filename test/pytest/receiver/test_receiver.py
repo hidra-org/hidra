@@ -4,11 +4,6 @@ import sys
 import time
 import pytest
 
-receiver_path = (
-    Path(__file__).parent.parent.parent.parent / "src/hidra/receiver")
-assert receiver_path.is_dir()
-sys.path.insert(0, receiver_path)
-
 from datareceiver import PluginHandler, run_plugin_thread  # noqa
 import plugins.mock_plugin as mock_plugin_m  # noqa
 
