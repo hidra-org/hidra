@@ -43,7 +43,6 @@ def worker(config):
     worker_config = config.copy()
     del worker_config["user_config_path"]
     worker = AsapoWorker(**worker_config)
-    # worker.send_message = create_autospec(worker.send_message)
     return worker
 
 
@@ -138,6 +137,26 @@ def test_worker_data_source_regex(config, mock_create_producer):
     worker.send_message(filepath, metadata)
 
     assert "det01" in mock_create_producer.call_args.args
+
+
+def test_worker_index_offset_regex(config, mock_producer):
+    del config["user_config_path"]
+    config["file_regex"] = (
+        ".*/(?P<detector>.*)/(?P<scan_id>.*)"
+        "_scan[0-9]*_(?P<file_idx_offset>[0-9]+)-(?P<file_idx_in_scan>.*).tif"
+    )
+    worker = AsapoWorker(**config)
+
+    filepath = (
+        "/tmp/hidra_source/current/raw/det01/stream100_scan0_123-107.tif"
+    )
+    metadata = {
+        "relative_path": "current/raw/det01",
+        "filename": "stream100_scan0_123-107.tif"
+    }
+    worker.send_message(filepath, metadata)
+
+    assert mock_producer.send.call_args.kwargs["id"] == 230
 
 
 def test_config_time(plugin):

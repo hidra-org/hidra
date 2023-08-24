@@ -313,6 +313,7 @@ class AsapoWorker:
         matched = parse_file_path(self.file_regex, path)
         if matched is None:
             return None
+
         if "data_source" in matched:
             data_source = get_entry(matched, "data_source")
         else:
@@ -320,6 +321,10 @@ class AsapoWorker:
 
         stream = get_entry(matched, "scan_id")
         file_idx = int(get_entry(matched, "file_idx_in_scan"))
+
+        if "file_idx_offset" in matched:
+            file_idx += int(get_entry(matched, "file_idx_offset"))
+
         return data_source, stream, file_idx
 
     def stop(self):
