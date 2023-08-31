@@ -46,7 +46,7 @@ Example config:
         n_threads: 1
         user_config_path: 'path/to/conf'
         file_regex: '.*/(?P<data_source>.*)/scan_(?P<scan_id>.*)/'
-                    '(?P<file_idx_in_scan>.*).tif'
+                    '(?P<file_idx_offset>[0-9]+)-(?P<file_idx_in_scan>[0-9]+).tif'
 """
 
 from __future__ import absolute_import
@@ -168,8 +168,18 @@ class Plugin(object):
     def process(self, local_path, metadata, data=None):
         """Send the file to the ASAP::O producer
 
-        Asapo data_source and index are chosen by the incoming files in format
-        (<scan_id, <file_id>) -> (stream, id)
+        Asapo data_source, stream_name, and message ID are extracted from the local_path
+        via the configured file_regex. The file_regex must contain the following named
+        capture groups: scan_id, and file_idx_in_scan.
+
+        If data_source is not given by the regex, the configured default_data_source
+        will be used instead.
+
+        The message id is adjusted by the configured start_file_idx to reflect that
+        asapo message ids must start at 1 while the file_idx_in_scan can start at 0.
+
+        Additionally, if present, the file_idx_offset will be added to the
+        file_idx_in_scan to obtain the final message id.
 
         Args:
             local_path: The absolute path where the file was written
