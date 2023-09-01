@@ -1,4 +1,12 @@
 # develop
+
+- Add optional offset regex capture group to message id in asapo worker
+- Fix stopping old instances for detectors that moved to other beamlines
+- Add timeout to ldap search
+- Add ASAPO transfer client service
+- Build packages for RHEL9
+- Build packages for Debian 12
+
 # 4.4.2
 
 - Delay emitting watchdog events for empty files
