@@ -159,6 +159,7 @@ if sys.version_info.major >= 3:
         # ModuleNotFoundError: No module named 'ldap3'
         "ldap3",
         "zmq",
+        "zmq.utils.garbage",
         "configparser",
         "logging",
     ]
