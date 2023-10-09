@@ -146,7 +146,10 @@ def _parse_ldap3(ldapuri, ldap_cn, log):
         server = ldap3.Server(ldapuri)
     else:
         server = [ldap3.Server(uri) for uri in ldapuri]
-    con = ldap3.Connection(server)
+    # receive_timeout=10 raises LDAPSocketReceiveError if blocked in open or search
+    # for more than 10 seconds
+    # can be tested with "docker-compose pause ldap"
+    con = ldap3.Connection(server, receive_timeout=10)
     con.open()
     con.search(search_base="",
                search_filter="(cn={})".format(ldap_cn),
