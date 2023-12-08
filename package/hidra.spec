@@ -13,16 +13,24 @@ BuildRequires:	python3-devel
 BuildRequires:	python3-setuptools
 BuildRequires:	systemd-units
 Requires:	systemd
-Requires:	python36-zmq >= 14.5.0
+Requires:	python3-hidra = %{version}
 Requires:	python3-inotifyx >= 0.2.2
+%if 0%{?rhel} >= 8
+Requires:	python3-zmq >= 14.5.0
+Requires:	python3-requests
+Requires:	python3-setproctitle
+Requires:	python3-future
+%else
+Requires:	python36-zmq >= 14.5.0
 Requires:	python36-requests
 Requires:	python36-setproctitle
 Requires:	python36-future
-Requires:	python3-hidra = %{version}
+%endif
 
 %description
 HiDRA is a generic tool set for high performance data multiplexing with different qualities of service and is based on Python and ZeroMQ. It can be used to directly store the data in the storage system but also to send it to some kind of online monitoring or analysis framework. Together with OnDA, data can be analyzed with a delay of seconds resulting in an increase of the quality of the generated scientific data by 20 %. The modular architecture of the tool (divided into event detectors, data fetchers and receivers) makes it easily extendible and even gives the possibility to adapt the software to specific detectors directly (for example, Eiger and Lambda detector).
 
+%if 0%{?rhel} <= 7
 # python2 libraries
 %package -n python2-hidra
 Summary:	High performance data multiplexing tool - Python Library
@@ -39,6 +47,7 @@ Requires:   python-future
 
 %description -n python2-hidra
 This package contains only the API for developing tools against HiDRA.
+%endif
 
 # python3 libraries
 %package -n python3-hidra
@@ -47,11 +56,17 @@ Summary:	High performance data multiplexing tool - Python Library
 BuildArch:	noarch
 BuildRequires:	python3-devel
 BuildRequires:	python3-setuptools
+%if 0%{?rhel} >= 8
+Requires:	python3-zmq >= 14.5.0
+Requires:	python3-PyYAML
+Requires:	python3-ldap3
+%else
 Requires:	python36-zmq >= 14.5.0
 # centos 7 does not provide general python3 version
 Requires:	python36-PyYAML
 # centos 7 does not provide general python3 version
 Requires:	python36-ldap3
+%endif
 
 %description -n python3-hidra
 This package contains only the API for developing tools against HiDRA.
@@ -70,13 +85,12 @@ This package contains only the client to interact with the control server in the
 %prep
 %setup -q
 
-#%build
-#%{__python} setup.py build
-
 %install
 # Packaging Python API
-mkdir -p %{buildroot}/%{python_sitelib}/%{name}
+%if 0%{?rhel} <= 7
+mkdir -p %{buildroot}/%{python2_sitelib}/%{name}
 cp -r src/api/python/hidra/* %{buildroot}/%{python2_sitelib}/%{name}/
+%endif
 
 # Change shebang to python3
 find src -type f -name '*.py' -exec \
@@ -105,8 +119,6 @@ cp scripts/init_scripts/*.service %{buildroot}/%{_unitdir}/
 # log directory
 mkdir -p %{buildroot}/var/log/%{name}
 
-#%{__python} setup.py install -O1 --skip-build --root %{buildroot}
-
 %post
 %systemd_post %{name}@.service %{name}-receiver@.service %{name}-control-server@.service
 
@@ -127,16 +139,20 @@ mkdir -p %{buildroot}/var/log/%{name}
 %attr(0755,root,root) /opt/%{name}/src/hidra/sender/datamanager.py
 %dir /opt/%{name}/src/hidra/hidra_control
 /opt/%{name}/src/hidra/hidra_control/server.py
+%if 0%{?rhel} <= 7
 /opt/%{name}/src/hidra/hidra_control/server.pyc
 /opt/%{name}/src/hidra/hidra_control/server.pyo
+%endif
 %{_unitdir}/*.service
 %dir /opt/%{name}/conf
 %config(noreplace) /opt/%{name}/conf/*
 %attr(1777,root,root) /var/log/%{name}
 
+%if 0%{?rhel} <= 7
 %files -n python2-hidra
 %doc examples
 %{python2_sitelib}/*
+%endif
 
 %files -n python3-hidra
 %doc examples
@@ -148,8 +164,10 @@ mkdir -p %{buildroot}/var/log/%{name}
 %dir /opt/%{name}/src/hidra
 %dir /opt/%{name}/src/hidra/hidra_control
 /opt/%{name}/src/hidra/hidra_control/client.py
+%if 0%{?rhel} <= 7
 /opt/%{name}/src/hidra/hidra_control/client.pyc
 /opt/%{name}/src/hidra/hidra_control/client.pyo
+%endif
 %config(noreplace) /opt/%{name}/conf/control_client.yaml
 
 %changelog
