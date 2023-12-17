@@ -20,6 +20,8 @@ Requires:	python3-zmq >= 14.5.0
 Requires:	python3-requests
 Requires:	python3-setproctitle
 Requires:	python3-future
+Recommends:	python3-asapo_producer
+Recommends:	python3-asapo_consumer
 %else
 Requires:	python36-zmq >= 14.5.0
 Requires:	python36-requests
