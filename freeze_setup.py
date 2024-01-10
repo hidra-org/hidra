@@ -64,38 +64,6 @@ def get_zmq_path():
     return path
 
 
-def windows_specific():
-    """Set Windows specific packages and config
-    """
-    packages = ["watchdog"]
-
-    files = [
-        # config
-        (os.path.join(CONFPATH, "datamanager_windows.yaml"),
-         os.path.join("conf", "datamanager.yaml"))
-    ]
-
-    return packages, files
-
-
-def linux_specific():
-    """Set Linux specific packages and config
-    """
-
-    packages = ["inotify", "watchdog", "inotifyx"]
-
-    files = [
-        # config
-        (os.path.join(CONFPATH, "datamanager_pilatus.yaml"),
-         os.path.join("conf", "datamanager.yaml")),
-        # (os.path.join(get_zmq_path(), "../pyzmq.libs"),
-        # "lib/pyzmq.libs"),
-        ("/usr/lib64/libffi.so.5", "lib/libffi.so.5"),
-    ]
-
-    return packages, files
-
-
 def get_init():
     """Reuse the init file for installed HiDRA to reduce amount of maintenance
     """
@@ -138,9 +106,24 @@ def get_environment():
 
 
 if platform.system() == "Windows":
-    PLATFORM_SPECIFIC_PACKAGES, PLATFORM_SPECIFIC_FILES = windows_specific()
+    PLATFORM_SPECIFIC_PACKAGES = ["watchdog"]
+    PLATFORM_SPECIFIC_FILES = [
+        # config
+        (os.path.join(CONFPATH, "datamanager_windows.yaml"),
+         os.path.join("conf", "datamanager.yaml"))
+    ]
+    PLATFORM_SPECIFIC_BINARIES = []
 else:
-    PLATFORM_SPECIFIC_PACKAGES, PLATFORM_SPECIFIC_FILES = linux_specific()
+    PLATFORM_SPECIFIC_PACKAGES = ["inotify", "watchdog", "inotifyx"]
+    PLATFORM_SPECIFIC_FILES = [
+        # config
+        (os.path.join(CONFPATH, "datamanager_pilatus.yaml"),
+         os.path.join("conf", "datamanager.yaml")),
+        # (os.path.join(get_zmq_path(), "../pyzmq.libs"),
+        # "lib/pyzmq.libs"),
+    ]
+    # See https://github.com/marcelotduarte/cx_Freeze/issues/1239
+    PLATFORM_SPECIFIC_BINARIES = ["libffi.so"]
 
 # Some packages differ in Python 3
 # TODO windows compatible?
@@ -214,6 +197,7 @@ BUILD_EXE_OPTIONS = {
         (APIPATH, "lib/hidra"),
     ] + PLATFORM_SPECIFIC_FILES,
     'excludes': ['Tkinter'],
+    "bin_includes": [] + PLATFORM_SPECIFIC_BINARIES,
 }
 
 BDIS_MSI_OPTIONS = {
