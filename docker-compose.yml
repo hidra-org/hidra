@@ -17,8 +17,8 @@ services:
                     - ldap.hidra.test
 
     receiver:
-        image: hidratest-receiver
-        build: test/docker/receiver
+        image: hidratest-receiver-${RECEIVER_VERSION}
+        build: test/docker/receiver-${RECEIVER_VERSION}
         platform: linux
         container_name: asap3-p00
         hostname: asap3-p00
