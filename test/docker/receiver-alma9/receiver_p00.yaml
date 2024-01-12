@@ -1,0 +1,12 @@
+general:
+    log_path: /var/log/hidra
+    log_name: datareceiver_p00.log
+    username: p00user
+    procname: hidra-receiver_p00
+    whitelist: a3p00-hosts
+    ldapuri: ldap.hidra.test
+
+datareceiver:
+    target_dir: /beamline/p00
+    data_stream_ip: asap3-p00
+    data_stream_port: 50100
