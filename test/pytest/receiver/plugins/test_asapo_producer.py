@@ -106,6 +106,20 @@ def test_worker_non_matching_file(worker, mock_create_producer):
     mock_create_producer.assert_not_called()
 
 
+def test_worker_file_index_match_not_an_integer(worker, mock_create_producer, caplog):
+    filepath = "/tmp/hidra_source/current/raw/det01/stream100_scan0-foo.tif"
+    metadata = {
+        "relative_path": "current/raw/det01",
+        "filename": "stream100_scan0-foo.tif"
+    }
+    worker.send_message(filepath, metadata)
+
+    mock_create_producer.assert_not_called()
+    record = caplog.records[0]
+    assert record.levelname == "WARNING"
+    assert "Ignor" in record.message
+
+
 def test_worker_stop(worker, mock_producer):
     filepath = "/tmp/hidra_source/current/raw/det01/stream100_scan0-107.tif"
     metadata = {

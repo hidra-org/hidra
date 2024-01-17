@@ -27,10 +27,9 @@ class TransferConfig:
                  target_dir='', n_threads=1, start_file_idx=1, beamtime='auto',
                  file_regex="current/raw/(?P<scan_id>.*)_(?P<file_idx_in_scan>.*).h5",
                  timeout=30, reconnect_timeout=3, log_level="INFO"):
-        
         self.detector_id = detector_id
         self.log_level = log_level
-        
+
         self.endpoint = endpoint
         self.beamtime = beamtime
         self.beamline = beamline
@@ -40,7 +39,7 @@ class TransferConfig:
         self.default_data_source = default_data_source
         self.file_regex = file_regex
         self.start_file_idx = start_file_idx
-        
+
         self.signal_host = signal_host
         self.target_host = target_host
         self.target_dir = target_dir
@@ -65,7 +64,8 @@ def create_query(signal_host, detector_id):
     return query
 
 
-def create_asapo_transfer(asapo_worker, query, target_host, target_dir, reconnect_timeout):
+def create_asapo_transfer(asapo_worker, query, target_host, target_dir, reconnect_timeout, stop_event):
+    """Create an AsapoTransfer object with a random port"""
     target_port = random.randrange(50101, 50200)
     asapo_transfer = AsapoTransfer(
         asapo_worker=asapo_worker,
@@ -73,26 +73,31 @@ def create_asapo_transfer(asapo_worker, query, target_host, target_dir, reconnec
         target_host=target_host,
         target_port=target_port,
         target_dir=target_dir,
-        reconnect_timeout=reconnect_timeout)
+        reconnect_timeout=reconnect_timeout,
+        stop_event=stop_event,
+    )
 
     return asapo_transfer
 
 
 class AsapoTransfer:
-    def __init__(self, asapo_worker, query, target_host, target_port, target_dir, reconnect_timeout):
-
+    def __init__(self, asapo_worker, query, target_host, target_port, target_dir, reconnect_timeout, stop_event=None):
         self.query = query
         self.target_host = target_host
         self.target_port = target_port
         self.target_dir = target_dir
         self.asapo_worker = asapo_worker
         self.reconnect_timeout = reconnect_timeout
-        self.stop_run = Event()
+        if stop_event is None:
+            stop_event = Event()
+        self.stop_run = stop_event
 
     def run(self):
         if self.stop_run.is_set():
             raise Stopped
         try:
+            # All interactions with the query object have to happen in this
+            # block to ensure query.stop is always called
             logger.info("Starting query")
             self.query.start([self.target_host, self.target_port])
             logger.info("Initiating connection for %s : %s", self.target_host, self.target_port)
@@ -100,6 +105,9 @@ class AsapoTransfer:
             self._run()
         finally:
             logger.info("Stopping query")
+            # Calling stop might raise. The caller should discard the query
+            # object in any case after this and therefore exceptions from stop
+            # don't need to be handled specifically.
             self.query.stop()
 
     def _run(self):
@@ -149,13 +157,13 @@ def main():
     run_transfer(asapo_worker, config, config.reconnect_timeout)
 
 
-def varify_config(config):
+def verify_config(config):
     msg = ''
     if "endpoint" not in config:
         msg += "Parameter 'endpoint' is missing in config."
 
     par_types = [["endpoint", str],
-                 ["default_data_source", str],
+                 ["token_path", str],
                  ["target_dir", str],
                  ["n_threads", int],
                  ["start_file_idx", int],
@@ -192,7 +200,7 @@ def construct_config(config_path, identifier):
     if config_path:
         with open("{}/asapo_transfer_{}.yaml".format(config_path, beamline), "r") as f:
             config = yaml.load(f.read(), Loader=yaml.FullLoader)
-        varify_config(config)
+        verify_config(config)
     else:
         config = {}
 
@@ -229,9 +237,16 @@ def run_transfer(asapo_worker, config, timeout=3, stop_event=None):
 
     while not stop_event.is_set():
         try:
+            # The main reason for this loop is to find a free port. As using the
+            # query object will raise if the port is already in use and
+            # create_query chooses a random port each time, a free port should
+            # be found eventually. Additionally, in case of an error from query,
+            # the state of the query object is unclear. To be safe, always
+            # create a new query object, independent of the exception.
             query = create_query(config.signal_host, config.detector_id)
-            asapo_transfer = create_asapo_transfer(asapo_worker, query,
-                                                   config.target_host, config.target_dir, config.reconnect_timeout)
+            asapo_transfer = create_asapo_transfer(
+                asapo_worker, query, config.target_host, config.target_dir,
+                config.reconnect_timeout, stop_event)
             asapo_transfer.run()
         except Stopped:
             break

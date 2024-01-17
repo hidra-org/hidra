@@ -22,9 +22,6 @@ endpoint: localhost:8000
 # ASAPO send timeout in [s]
 # timeout: 30
 
-# Signal host
-# signal_host: 'localhost'
-
 # Target directory
 # target_dir: ''
 
