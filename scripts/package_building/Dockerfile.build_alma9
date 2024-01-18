@@ -1,0 +1,7 @@
+FROM almalinux:9
+
+RUN yum update -y && yum install -y \
+    git \
+    rpm-build \
+    python3-devel \
+    python3-setuptools

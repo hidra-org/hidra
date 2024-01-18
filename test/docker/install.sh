@@ -6,8 +6,13 @@ HIDRA_DIR=`pwd`
 get_hidra_version
 HIDRA_VERSION_DEBIAN=${HIDRA_VERSION%.dev*}
 
+if [ -z ${RECEIVER_VERSION} ]; then
+    RECEIVER_VERSION=centos7
+fi
+
 export HIDRA_TESTDIR
 export UID
+export RECEIVER_VERSION
 
 [[ -z "${HIDRA_TESTDIR}" ]] && exit 1
 
@@ -41,8 +46,8 @@ docker-compose up --build -d
 
 # setup receiver
 docker-compose exec receiver yum install -y \
-    build/centos7/${HIDRA_VERSION}*/rpmbuild/RPMS/noarch/python3-hidra-${HIDRA_VERSION}*-?.el7.noarch.rpm \
-    build/centos7/${HIDRA_VERSION}*/rpmbuild/RPMS/noarch/hidra-${HIDRA_VERSION}*-?.el7.noarch.rpm
+    build/${RECEIVER_VERSION}/${HIDRA_VERSION}*/rpmbuild/RPMS/noarch/python3-hidra-${HIDRA_VERSION}*-?.el?.noarch.rpm \
+    build/${RECEIVER_VERSION}/${HIDRA_VERSION}*/rpmbuild/RPMS/noarch/hidra-${HIDRA_VERSION}*-?.el?.noarch.rpm
 
 docker-compose exec receiver bash /scripts/post_install.sh
 
