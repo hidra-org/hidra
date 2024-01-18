@@ -20,13 +20,16 @@ endpoint: localhost:8000
 # file_regex: "current/raw/(?P<scan_id>.*)_(?P<file_idx_in_scan>.*).h5"
 
 # ASAPO send timeout in [s]
-# timeout: 30
+# send_timeout: 30
 
 # Target directory
 # target_dir: ''
 
-# Timeout to reconnect to sender
-# reconnect_timeout: 3
+# Delay to reconnect to sender
+# reconnect_delay: 3
+
+# Hidra receive timeout
+# receive_timeout: 3
 
 # Set log level for the application
 # log_level: "DEBUG"

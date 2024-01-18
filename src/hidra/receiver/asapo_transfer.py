@@ -26,7 +26,7 @@ class TransferConfig:
                  endpoint, beamline, default_data_source, token,
                  target_dir='', n_threads=1, start_file_idx=1, beamtime='auto',
                  file_regex="current/raw/(?P<scan_id>.*)_(?P<file_idx_in_scan>.*).h5",
-                 timeout=30, reconnect_timeout=3, log_level="INFO"):
+                 send_timeout=30, receive_timeout=3, reconnect_delay=3, log_level="INFO"):
         self.detector_id = detector_id
         self.log_level = log_level
 
@@ -35,7 +35,7 @@ class TransferConfig:
         self.beamline = beamline
         self.token = token
         self.n_threads = n_threads
-        self.timeout = timeout
+        self.send_timeout = send_timeout
         self.default_data_source = default_data_source
         self.file_regex = file_regex
         self.start_file_idx = start_file_idx
@@ -43,7 +43,8 @@ class TransferConfig:
         self.signal_host = signal_host
         self.target_host = target_host
         self.target_dir = target_dir
-        self.reconnect_timeout = reconnect_timeout
+        self.receive_timeout = receive_timeout
+        self.reconnect_delay = reconnect_delay
 
     def __repr__(self):
         return str(self.__dict__)
@@ -64,7 +65,7 @@ def create_query(signal_host, detector_id):
     return query
 
 
-def create_asapo_transfer(asapo_worker, query, target_host, target_dir, reconnect_timeout, stop_event):
+def create_asapo_transfer(asapo_worker, query, target_host, target_dir, receive_timeout, stop_event):
     """Create an AsapoTransfer object with a random port"""
     target_port = random.randrange(50101, 50200)
     asapo_transfer = AsapoTransfer(
@@ -73,7 +74,7 @@ def create_asapo_transfer(asapo_worker, query, target_host, target_dir, reconnec
         target_host=target_host,
         target_port=target_port,
         target_dir=target_dir,
-        reconnect_timeout=reconnect_timeout,
+        receive_timeout=receive_timeout,
         stop_event=stop_event,
     )
 
@@ -81,13 +82,13 @@ def create_asapo_transfer(asapo_worker, query, target_host, target_dir, reconnec
 
 
 class AsapoTransfer:
-    def __init__(self, asapo_worker, query, target_host, target_port, target_dir, reconnect_timeout, stop_event=None):
+    def __init__(self, asapo_worker, query, target_host, target_port, target_dir, receive_timeout, stop_event=None):
         self.query = query
         self.target_host = target_host
         self.target_port = target_port
         self.target_dir = target_dir
         self.asapo_worker = asapo_worker
-        self.reconnect_timeout = reconnect_timeout
+        self.receive_timeout = receive_timeout
         if stop_event is None:
             stop_event = Event()
         self.stop_run = stop_event
@@ -113,7 +114,7 @@ class AsapoTransfer:
     def _run(self):
         while not self.stop_run.is_set():
             logger.debug("Querying next message")
-            [metadata, data] = self.query.get(timeout=self.reconnect_timeout*1000)
+            [metadata, data] = self.query.get(timeout=self.receive_timeout*1000)
             if metadata is not None:
                 try:
                     local_path = generate_filepath(self.target_dir, metadata)
@@ -148,13 +149,13 @@ def main():
         n_threads=config.n_threads,
         file_regex=config.file_regex,
         default_data_source=config.default_data_source,
-        timeout=config.timeout,
+        timeout=config.send_timeout,
         beamline=config.beamline,
         start_file_idx=config.start_file_idx)
 
     logger.info("Creating AsapoWorker with %s", worker_args)
     asapo_worker = AsapoWorker(**worker_args)
-    run_transfer(asapo_worker, config, config.reconnect_timeout)
+    run_transfer(asapo_worker, config, config.reconnect_delay)
 
 
 def verify_config(config):
@@ -169,8 +170,9 @@ def verify_config(config):
                  ["start_file_idx", int],
                  ["beamtime", str],
                  ["file_regex", str],
-                 ["timeout", int],
-                 ["reconnect_timeout", int],
+                 ["send_timeout", int],
+                 ["receive_timeout", int],
+                 ["reconnect_delay", int],
                  ["log_level", str],
                  ["default_data_source", str]]
 
@@ -222,7 +224,7 @@ def construct_config(config_path, identifier):
     return TransferConfig(**config)
 
 
-def run_transfer(asapo_worker, config, timeout=3, stop_event=None):
+def run_transfer(asapo_worker, config, reconnect_delay=3, stop_event=None):
     asapo_transfer = None
     if stop_event is None:
         stop_event = Event()
@@ -246,14 +248,14 @@ def run_transfer(asapo_worker, config, timeout=3, stop_event=None):
             query = create_query(config.signal_host, config.detector_id)
             asapo_transfer = create_asapo_transfer(
                 asapo_worker, query, config.target_host, config.target_dir,
-                config.reconnect_timeout, stop_event)
+                config.receive_timeout, stop_event)
             asapo_transfer.run()
         except Stopped:
             break
         except Exception:
             logger.warning(
                 "Running Transfer stopped with an exception", exc_info=True)
-            sleep(timeout)
+            sleep(reconnect_delay)
             logger.info("Retrying connection")
 
 

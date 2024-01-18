@@ -59,7 +59,7 @@ def transfer_config(worker_config):
         signal_host="localhost",
         target_host="localhost",
         target_dir='',
-        reconnect_timeout=1,
+        receive_timeout=1,
     )
     init_config.update(worker_config)
     return TransferConfig(**init_config)
@@ -112,7 +112,7 @@ def mock_transfer(hidra_metadata):
 
 
 def test_verify_config():
-    verify_config({"endpoint": "localhost:8000", "timeout": 10, "log_level": "INFO"})
+    verify_config({"endpoint": "localhost:8000", "send_timeout": 10, "log_level": "INFO"})
 
 
 def test_verify_config_missing_endpoint():
@@ -122,17 +122,17 @@ def test_verify_config_missing_endpoint():
 
 def test_verify_config_wrong_type():
     with pytest.raises(ValueError):
-        verify_config({"endpoint": "localhost:8000", "timeout": "10"})
+        verify_config({"endpoint": "localhost:8000", "send_timeout": "10"})
 
 
 def test_verify_config_unexpected__parameter():
     with pytest.raises(ValueError):
-        verify_config({"endpoint": "localhost:8000", "timeout": 10, "beamline": "p00"})
+        verify_config({"endpoint": "localhost:8000", "send_timeout": 10, "beamline": "p00"})
 
 
 def test_verify_config_wrong_log_level():
     with pytest.raises(ValueError):
-        verify_config({"endpoint": "localhost:8000", "timeout": 10, "log_level": "FOO"})
+        verify_config({"endpoint": "localhost:8000", "send_timeout": 10, "log_level": "FOO"})
 
 
 def test_construct_config(tmp_path):
