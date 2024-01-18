@@ -153,7 +153,8 @@ mkdir -p %{buildroot}/var/log/%{name}
 %dir /opt/%{name}/src
 %dir /opt/%{name}/src/hidra
 %dir /opt/%{name}/src/hidra/receiver
-%attr(0755,root,root) /opt/%{name}/src/hidra/receiver/*
+/opt/%{name}/src/hidra/receiver/*
+%attr(0755,root,root) /opt/%{name}/src/hidra/receiver/datareceiver.py
 %dir /opt/%{name}/src/hidra/sender
 /opt/%{name}/src/hidra/sender/*
 %attr(0755,root,root) /opt/%{name}/src/hidra/sender/datamanager.py
