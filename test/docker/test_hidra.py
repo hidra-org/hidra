@@ -518,12 +518,36 @@ def test_control_eiger_storing_files_failed(eiger_instance):
 
 
 def test_control_client_beamline_not_in_netgroup():
-    ret = control_client("start", beamline="p01", det="eiger")
-    assert (
-        "Host control-client.hidra.test is not contained in netgroup of"
-        " beamline p01"
-        in ret.stdout
-    )
+    control_client("stop", beamline="p00", det="eiger")
+    # Remove control client from ldap netgroup
+    cmd = [
+        "ldapmodify", "-x",
+        "-D", "cn=admin,dc=hidra,dc=test",
+        "-w", "admin",
+        "-H", "ldap://localhost",
+        "-f", "remove_control_client.ldif",
+        "-v"]
+    out = docker_run("ldap", cmd)
+    print("ldap output", out)
+
+    try:
+        ret = control_client("start", beamline="p00", det="eiger")
+        assert (
+            "Host control-client.hidra.test is not contained in netgroup of"
+            " beamline p00"
+            in ret.stdout
+        )
+    finally:
+        # Recreate complete ldap netgroup
+        cmd = [
+            "ldapmodify", "-x",
+            "-D", "cn=admin,dc=hidra,dc=test",
+            "-w", "admin",
+            "-H", "ldap://localhost",
+            "-f", "add_all.ldif",
+            "-v"]
+        docker_run("ldap", cmd)
+
 
 
 def test_control_client_detector_not_in_netgroup():
