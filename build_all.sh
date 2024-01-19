@@ -7,6 +7,8 @@ scripts/package_building/debian_build_hidra.sh --hidra-location `pwd` --version 
 
 scripts/package_building/debian_build_hidra.sh --hidra-location `pwd` --version 11
 
+scripts/package_building/debian_build_hidra.sh --hidra-location `pwd` --version 12
+
 # bash scripts/package_building/manylinux_build_hidra.sh
 
 pushd scripts/package_building
