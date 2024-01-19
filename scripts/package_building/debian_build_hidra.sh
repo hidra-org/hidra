@@ -158,7 +158,7 @@ build_package()
 {
     cmd="cd /external/hidra; dpkg-buildpackage -us -uc -sa"
     if [[ ${DEBIAN_VERSION} -ge 11 ]]; then
-        cmd="$cmd && lintian"
+        cmd="$cmd && lintian --suppress-tags bad-distribution-in-changes-file"
     fi
 
     IN_DOCKER_DIR=/external

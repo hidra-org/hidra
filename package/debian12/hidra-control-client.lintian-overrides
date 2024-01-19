@@ -1,1 +1,1 @@
-hidra-control-client: dir-or-file-in-opt opt/hidra/*
+hidra-control-client: dir-or-file-in-opt [opt/hidra/*]
