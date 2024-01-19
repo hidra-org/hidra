@@ -84,6 +84,13 @@ Requires:	python3-hidra = %{version}
 %description -n hidra-control-client
 This package contains only the client to interact with the control server in the HIDRA package.
 
+# This is needed to prevent python compilation error on CentOS
+# See https://fedoraproject.org/wiki/Python3.4GuidlinesDraft
+# Disable automatic bytecode compilation
+%if 0%{?rhel} <= 7
+%global __os_install_post %(echo '%{__os_install_post}' | sed -e 's!/usr/lib[^[:space:]]*/brp-python-bytecompile[[:space:]].*$!!g')
+%endif
+
 %prep
 %setup -q
 
@@ -121,6 +128,17 @@ cp scripts/init_scripts/*.service %{buildroot}/%{_unitdir}/
 # log directory
 mkdir -p %{buildroot}/var/log/%{name}
 
+%if 0%{?rhel} <= 7
+#%{__python2} setup.py install -O1 --skip-build --root %{buildroot}
+# Compile bytecode manually with the correct interpreter
+%py_byte_compile %{__python2} %{buildroot}/%{python2_sitelib}/%{name}
+%py_byte_compile %{__python2} %{buildroot}/opt/%{name}/src/hidra/sender/
+%py_byte_compile %{__python2} %{buildroot}/opt/%{name}/src/hidra/receiver/
+%endif
+%py_byte_compile %{__python3} %{buildroot}/%{python3_sitelib}/%{name}
+%py_byte_compile %{__python3} %{buildroot}/opt/%{name}/src/hidra/sender/
+%py_byte_compile %{__python3} %{buildroot}/opt/%{name}/src/hidra/receiver/
+
 %post
 %systemd_post %{name}@.service %{name}-receiver@.service %{name}-control-server@.service
 
@@ -135,16 +153,13 @@ mkdir -p %{buildroot}/var/log/%{name}
 %dir /opt/%{name}/src
 %dir /opt/%{name}/src/hidra
 %dir /opt/%{name}/src/hidra/receiver
-%attr(0755,root,root) /opt/%{name}/src/hidra/receiver/*
+/opt/%{name}/src/hidra/receiver/*
+%attr(0755,root,root) /opt/%{name}/src/hidra/receiver/datareceiver.py
 %dir /opt/%{name}/src/hidra/sender
 /opt/%{name}/src/hidra/sender/*
 %attr(0755,root,root) /opt/%{name}/src/hidra/sender/datamanager.py
 %dir /opt/%{name}/src/hidra/hidra_control
 /opt/%{name}/src/hidra/hidra_control/server.py
-%if 0%{?rhel} <= 7
-/opt/%{name}/src/hidra/hidra_control/server.pyc
-/opt/%{name}/src/hidra/hidra_control/server.pyo
-%endif
 %{_unitdir}/*.service
 %dir /opt/%{name}/conf
 %config(noreplace) /opt/%{name}/conf/*
@@ -166,10 +181,6 @@ mkdir -p %{buildroot}/var/log/%{name}
 %dir /opt/%{name}/src/hidra
 %dir /opt/%{name}/src/hidra/hidra_control
 /opt/%{name}/src/hidra/hidra_control/client.py
-%if 0%{?rhel} <= 7
-/opt/%{name}/src/hidra/hidra_control/client.pyc
-/opt/%{name}/src/hidra/hidra_control/client.pyo
-%endif
 %config(noreplace) /opt/%{name}/conf/control_client.yaml
 
 %changelog

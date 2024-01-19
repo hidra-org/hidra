@@ -76,8 +76,8 @@ build_package()
         bash
     docker start "${DOCKER_CONTAINER}" > /dev/null && echo "Started container"
     docker exec --user="${UIDGID}" "${DOCKER_CONTAINER}" sh -c "$cmd" && success=true
-    # docker stop "${DOCKER_CONTAINER}" > /dev/null && echo "Stopped container"
-    # docker rm "${DOCKER_CONTAINER}" > /dev/null && echo "Removed container"
+    docker stop "${DOCKER_CONTAINER}" > /dev/null && echo "Stopped container"
+    docker rm "${DOCKER_CONTAINER}" > /dev/null && echo "Removed container"
 
     rm "$PASSWD_FILE"
     rm "$GROUP_FILE"
