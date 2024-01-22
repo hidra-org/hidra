@@ -211,7 +211,7 @@ def stop_sender(sender_type):
     if sender_type in ["sender-freeze", "sender-suse"]:
         out = stop_sender_script(sender_type)
     elif sender_type in [
-            "sender-debian", "sender-debian10", "sender-debian11"]:
+            "sender-debian", "sender-debian10", "sender-debian11", "sender-debian12"]:
         out = stop_sender_systemctl(sender_type)
         assert out.returncode == 0
     else:
@@ -241,7 +241,7 @@ def start_sender(
         sender_type="sender-freeze", eventdetector_type="inotify_events"):
     senders = [
         "sender-freeze", "sender-debian", "sender-debian10",
-        "sender-debian11", "sender-suse"]
+        "sender-debian11", "sender-debian12", "sender-suse"]
     if sender_type not in senders:
         raise ValueError("Sender not supported")
     event_types = ["inotify_events", "inotifyx_events", "watchdog_events"]
@@ -262,7 +262,7 @@ def start_sender(
         print("start:", out.stdout, out.stderr)
         assert "OK" in out.stdout or "..done" in out.stdout
     elif sender_type in [
-            "sender-debian", "sender-debian10", "sender-debian11"]:
+            "sender-debian", "sender-debian10", "sender-debian11", "sender-debian12"]:
         out = start_sender_systemctl(sender_type)
         assert out.returncode == 0
 
@@ -285,7 +285,7 @@ def start_sender(
     scope="module",
     params=[
         "sender-freeze", "sender-debian", "sender-debian10", "sender-debian11",
-        "sender-suse"])
+        "sender-debian12", "sender-suse"])
 def sender_type(request):
     return request.param
 
@@ -301,7 +301,7 @@ def eventdetector_type(request):
 def stopped_sender_instance(sender_type, eventdetector_type):
     if (
             eventdetector_type == "inotify_events"
-            and sender_type == "sender-debian11"):
+            and sender_type in ["sender-debian11", "sender-debian12"]):
         # inotify is unsupported on Debain 11
         pytest.skip()
     stop_sender(sender_type)
@@ -587,7 +587,7 @@ def test_sender_status_stopped(stopped_sender_instance):
             "hidra_p00 is not running" in out.stdout
             or "hidra_p00 ..unused" in out.stdout)
     elif sender_type in [
-            "sender-debian", "sender-debian10", "sender-debian11"]:
+            "sender-debian", "sender-debian10", "sender-debian11", "sender-debian12"]:
         out = docker_run(
             sender_type, ["systemctl", "is-active", "hidra@p00"])
         assert out.stdout == "inactive\n"
@@ -603,7 +603,7 @@ def test_sender_status_running(sender_instance):
             "hidra_p00 is running" in out.stdout
             or "hidra_p00 ..running" in out.stdout)
     elif sender_type in [
-            "sender-debian", "sender-debian10", "sender-debian11"]:
+            "sender-debian", "sender-debian10", "sender-debian11", "sender-debian12"]:
         out = docker_run(
             sender_type, ["systemctl", "is-active", "hidra@p00"])
         assert out.stdout == "active\n"

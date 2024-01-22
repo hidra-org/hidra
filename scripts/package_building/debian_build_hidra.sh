@@ -10,8 +10,13 @@ fix_debian_version()
     printf "Fix debian version\n"
     default_release=9u5
 
+    # debian 12
+    if [ "$DEBIAN_VERSION" == "12" ]
+    then
+        set_package_release=12
+        set_standards_version=4.4.0
     # debian 11
-    if [ "$DEBIAN_VERSION" == "11" ]
+    elif [ "$DEBIAN_VERSION" == "11" ]
     then
         set_package_release=11u1
         set_standards_version=4.4.0
@@ -47,6 +52,11 @@ check_arguments()
         DEBIAN_VERSION=$DEFAULT_VERSION
         printf "Create packages for debian %s. " "$DEBIAN_VERSION"
         printf "If you want a different version use --version\n"
+    # debian 12
+    elif [ "$version" == "12" ] || [ "$version" == "bookworm" ]
+    then
+        DEBIAN_NAME=bookworm
+        DEBIAN_VERSION=12
     # debian 11
     elif [ "$version" == "11" ] || [ "$version" == "bullseye" ]
     then
@@ -148,7 +158,7 @@ build_package()
 {
     cmd="cd /external/hidra; dpkg-buildpackage -us -uc -sa"
     if [[ ${DEBIAN_VERSION} -ge 11 ]]; then
-        cmd="$cmd && lintian"
+        cmd="$cmd && lintian --suppress-tags bad-distribution-in-changes-file"
     fi
 
     IN_DOCKER_DIR=/external
