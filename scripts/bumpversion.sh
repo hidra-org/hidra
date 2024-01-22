@@ -54,6 +54,8 @@ bumpversion ${RELEASE} ${DRYRUN} --config-file $SELF_DIR/.bumpversion.cfg --allo
 fix_timezone
 fix_changelog_entries 9
 fix_changelog_entries 10
+fix_changelog_entries 11
+fix_changelog_entries 12
 
 #TODO add to git via bumpversion or
 #git add -u
