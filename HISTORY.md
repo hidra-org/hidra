@@ -1,5 +1,7 @@
 # develop
 
+# 4.4.3
+
 - Add optional offset regex capture group to message id in asapo worker
 - Fix stopping old instances for detectors that moved to other beamlines
 - Add timeout to ldap search
