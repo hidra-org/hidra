@@ -28,8 +28,7 @@ fix_timezone()
     echo "Fix timezone"
     current_time=$(date "+%a, %d %b %Y %H")
     timezone=$(date "+%z")
-    sed -i -e "s/$current_time\(:[0-9][0-9]:[0-9][0-9]\) $/$current_time\1 $timezone/g" package/debian9/changelog
-    sed -i -e "s/$current_time\(:[0-9][0-9]:[0-9][0-9]\) $/$current_time\1 $timezone/g" package/debian10/changelog
+    sed -i -e "s/$current_time\(:[0-9][0-9]:[0-9][0-9]\) $/$current_time\1 $timezone/g" package/debian$1/changelog
 }
 
 fix_changelog_entries()
@@ -51,7 +50,10 @@ SELF_DIR="${SELF_PATH%/*}"
 bumpversion ${RELEASE} ${DRYRUN} --config-file $SELF_DIR/.bumpversion_prework.cfg || return 1
 bumpversion ${RELEASE} ${DRYRUN} --config-file $SELF_DIR/.bumpversion.cfg --allow-dirty || return 1
 
-fix_timezone
+fix_timezone 9
+fix_timezone 10
+fix_timezone 11
+fix_timezone 12
 fix_changelog_entries 9
 fix_changelog_entries 10
 fix_changelog_entries 11
