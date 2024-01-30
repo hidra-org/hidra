@@ -16,7 +16,10 @@ fi
 
 # freeze
 PYBIN=/opt/python/cp37-cp37m/bin/python
-$PYBIN -m pip install cx_freeze==6.5
+$PYBIN -m pip install patchelf==0.17.2.1  # cx_freeze 6.15 requires patchelf >=0.14
+rm /usr/local/bin/patchelf
+ln -s /opt/_internal/cpython-3.7.10/bin/patchelf /usr/local/bin/patchelf
+$PYBIN -m pip install cx_freeze==6.15
 $PYBIN -m pip install -r requirements.txt
 
 # build inotifyx
