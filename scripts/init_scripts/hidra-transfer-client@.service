@@ -1,0 +1,11 @@
+[Unit]
+Description=HiDRA ASAP::O Transfer Client for %i
+Wants=network-online.target
+After=network-online.target
+BindsTo=hidra@%i.service
+
+[Service]
+WorkingDirectory=/opt/hidra
+User=hidra
+SupplementaryGroups=asapo
+ExecStart=/usr/bin/python3 /opt/hidra/src/hidra/receiver/asapo_transfer.py --config_path /opt/hidra/conf %i
