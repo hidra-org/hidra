@@ -381,7 +381,7 @@ def test_control_eiger_getsettings(eiger_instance):
     settings = parse_output(ret.stdout)
     assert settings["Detector IP"] == "eiger"
     assert settings["Detector API version"] == eiger_instance["detapi"]
-    assert settings["History size"] == "2000"
+    assert settings["History size"] == "-1"
     assert settings["Store data"] == "True"
     assert settings["Remove data from the detector"] == "True"
     assert settings["Whitelist"] == "a3p00-hosts"
