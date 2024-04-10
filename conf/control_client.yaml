@@ -10,7 +10,9 @@ hidra:
             det_api_version: 1.6.0
             # The size of the ring buffer to check for new files on the detector
             # (this usually does not have to be changed)
-            history_size: 2000
+            # The special value -1 enables almost immediate reuse of filenames
+            # (a previously downloaded file with the same name will be overwritten)
+            history_size: -1
     datafetcher:
         # Flag describing if the data should be stored on the filesystem
         store_data: True
