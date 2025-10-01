@@ -1,6 +1,6 @@
 get_hidra_version()
 {
-    NEXT_HIDRA_VERSION=$(cat ${HIDRA_DIR}/src/api/python/hidra/utils/_version.py)
+    NEXT_HIDRA_VERSION=$(cat "${HIDRA_DIR}/src/api/python/hidra/utils/_version.py")
 
     # cut of the first characters
     NEXT_HIDRA_VERSION=${NEXT_HIDRA_VERSION:15}
