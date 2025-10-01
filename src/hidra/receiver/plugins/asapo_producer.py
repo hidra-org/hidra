@@ -54,6 +54,7 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from builtins import super  # pylint: disable=redefined-builtin
+from collections import OrderedDict
 import json
 import logging
 from os import path
@@ -258,7 +259,8 @@ class AsapoWorker:
         self.ingest_mode = get_ingest_mode(
             "INGEST_MODE_TRANSFER_METADATA_ONLY")
         self.lock = threading.Lock()
-        self.data_source_info = {}
+        self.data_source_info = OrderedDict()
+        self.max_data_sources = 10
 
     def _create_producer(self, data_source):
         logger.info("Create producer with data_source=%s", data_source)
@@ -268,10 +270,19 @@ class AsapoWorker:
                 data_source, self.token, self.n_threads,
                 self.timeout * 1000),
         }
+        # Limit the number of producers to not run out of open files (each producer
+        # maintains a connection for each producer thread)
+        if len(self.data_source_info) > self.max_data_sources:
+            # As producers are moved to the end on use, deleting the first item removes
+            # the least recently used producer
+            self.data_source_info.popitem(last=False)
 
     def _get_producer(self, data_source):
         if data_source not in self.data_source_info:
             self._create_producer(data_source=data_source)
+        else:
+            # Move most recently used producers to the end
+            self.data_source_info.move_to_end(data_source)
         return self.data_source_info[data_source]["producer"]
 
     def send_message(self, local_path, metadata):
