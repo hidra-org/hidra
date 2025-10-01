@@ -54,6 +54,7 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from builtins import super  # pylint: disable=redefined-builtin
+from collections import OrderedDict
 import json
 import logging
 from os import path
@@ -258,7 +259,14 @@ class AsapoWorker:
         self.ingest_mode = get_ingest_mode(
             "INGEST_MODE_TRANSFER_METADATA_ONLY")
         self.lock = threading.Lock()
-        self.data_source_info = {}
+        self.data_source_info = OrderedDict()
+        # Limit number of data sources that can be active at the same time because each
+        # data source needs its own producer instance that keeps up to n_threads TCP
+        # connections open. Here, we allow up to 10 concurrently active data sources,
+        # i.e., up to 10 producer instances, which should be plenty as most beamlines
+        # use only 1 or 2. More than 10 active data sources might still work, but with
+        # degraded performance as producers would be constantly deleted and recreated.
+        self.max_active_data_sources = 10
 
     def _create_producer(self, data_source):
         logger.info("Create producer with data_source=%s", data_source)
@@ -268,10 +276,32 @@ class AsapoWorker:
                 data_source, self.token, self.n_threads,
                 self.timeout * 1000),
         }
+        # Limit the number of active data sources to not run out of open files (there is
+        # one producer per data source that maintains an open connection for each
+        # producer thread)
+        if len(self.data_source_info) > self.max_active_data_sources:
+            # As data sources are moved to the end on use, deleting the first item
+            # removes the least recently used data source
+            oldest_data_source, oldest_info = self.data_source_info.popitem(last=False)
+            logger.info("Delete producer with data_source=%s", oldest_data_source)
+            oldest_producer = oldest_info["producer"]
+            # As this is the least recently active producer, there should be no
+            # outstanding requests. Don't wait too long here as this blocks new messages
+            # from being sent.
+            try:
+                oldest_producer.wait_requests_finished(3000)
+            except asapo_producer.AsapoTimeoutError:
+                logger.warning(
+                    "Possible message loss: deleting producer with undelivered messages"
+                    " for data_source=%s", oldest_data_source)
+            oldest_producer.cleanup()
 
     def _get_producer(self, data_source):
         if data_source not in self.data_source_info:
             self._create_producer(data_source=data_source)
+        else:
+            # Move most recently used producers to the end
+            self.data_source_info.move_to_end(data_source)
         return self.data_source_info[data_source]["producer"]
 
     def send_message(self, local_path, metadata):
