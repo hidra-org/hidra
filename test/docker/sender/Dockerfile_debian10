@@ -2,6 +2,15 @@ FROM debian:10
 
 COPY *deb10*.deb /debs/
 
+# Fix archived repositories:
+# https://www.geekersdigest.com/apt-etc-apt-sources-list-for-every-debian-release/
+RUN echo "\
+    deb http://archive.debian.org/debian/ buster main non-free contrib\n\
+    deb http://archive.debian.org/debian/ buster-updates main non-free contrib\n\
+    deb http://archive.debian.org/debian/ buster-proposed-updates main non-free contrib\n\
+    deb http://archive.debian.org/debian-security buster/updates main contrib non-free" \
+    > /etc/apt/sources.list
+
 RUN apt update && apt install -y systemd python3-watchdog /debs/*
 
 # setup systemctl-replacement-script
