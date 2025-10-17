@@ -205,3 +205,56 @@ def test_plugin_stop(plugin):
 def test_plugin_stop_without_worker(plugin):
     assert plugin.asapo_worker is None
     plugin.stop()
+
+
+def test_worker_data_source_removal(config, mock_create_producer):
+    del config["user_config_path"]
+    config["file_regex"] = (
+        ".*/(?P<data_source>.*)/(?P<scan_id>.*)"
+        "_scan[0-9]*-(?P<file_idx_in_scan>.*).tif"
+    )
+    worker = AsapoWorker(**config)
+
+    # Create 11 data sources/producers
+    for i in range(worker.max_active_data_sources + 1):
+        filepath = "/tmp/hidra_source/current/raw/det{:02d}/stream100_scan0-107.tif".format(i)
+        metadata = {
+            "relative_path": "current/raw/det{:02d}".format(i),
+            "filename": "stream100_scan0-107.tif"
+        }
+        worker.send_message(filepath, metadata)
+        assert "det{:02d}".format(i) in mock_create_producer.call_args.args
+
+    assert len(worker.data_source_info) == worker.max_active_data_sources
+    assert "det00" not in worker.data_source_info
+    assert next(iter(worker.data_source_info)) == "det01"
+
+    # Send another message to move data source det01 to the end
+    filepath = (
+        "/tmp/hidra_source/current/raw/det01/stream100_scan0-108.tif"
+    )
+    metadata = {
+        "relative_path": "current/raw/det01",
+        "filename": "stream100_scan0-108.tif"
+    }
+    worker.send_message(filepath, metadata)
+
+    assert next(iter(worker.data_source_info)) == "det02"
+
+    # Create a new data source
+    filepath = (
+        "/tmp/hidra_source/current/raw/det99/stream100_scan0-107.tif"
+    )
+    metadata = {
+        "relative_path": "current/raw/det99",
+        "filename": "stream100_scan0-107.tif"
+    }
+    worker.send_message(filepath, metadata)
+
+    assert "det99" in mock_create_producer.call_args.args
+    assert len(worker.data_source_info) == worker.max_active_data_sources
+    assert "det00" not in worker.data_source_info
+    assert "det02" not in worker.data_source_info
+    assert "det01" in worker.data_source_info
+    assert "det99" in worker.data_source_info
+    assert next(iter(worker.data_source_info)) == "det03"
