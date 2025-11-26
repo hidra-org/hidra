@@ -1,5 +1,7 @@
 # develop
 
+- Limit number of open asapo producer connections used by receiver plugin
+
 # 4.4.3
 
 - Add optional offset regex capture group to message id in asapo worker
