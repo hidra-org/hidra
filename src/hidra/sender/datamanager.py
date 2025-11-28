@@ -504,7 +504,7 @@ class DataManager(Base):
 
         self.ipc_dir_permissions = 0o777
 
-        self.config = None
+        self.config = config
 
         self.procname = None
 
@@ -534,8 +534,6 @@ class DataManager(Base):
         self.statserver = None
 
         self.context = None
-
-        self.setup(config)
 
     def setup(self, config):
         """Initializes parameters and creates sockets.
@@ -790,7 +788,7 @@ class DataManager(Base):
     def run(self):
         """Running while reacting to exceptions.
         """
-
+        self.setup(self.config)
         try:
             if self.receiver_communication.check_target_host(use_log=True):
                 self.create_sockets()
@@ -1104,13 +1102,6 @@ class DataManager(Base):
 
         self.log.debug('got SIGTERM')
         self.stop()
-
-    def __exit__(self, exception_type, exception_value, traceback):
-        self.stop()
-
-    def __del__(self):
-        self.stop()
-
 
 # copied from https://github.com/pyinstaller/pyinstaller/blob/93285ece5a02932c6dac8f018bf107e7618d7d3c/PyInstaller/hooks/rthooks/pyi_rth_multiprocessing.py#L24  # noqa
 def _freeze_support():

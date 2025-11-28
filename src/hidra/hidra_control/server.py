@@ -990,10 +990,6 @@ class ControlServer(utils.Base):
 
         self.instances = None
 
-        self._setup()
-
-        self.run()
-
     def _setup(self):
 
         self.config = argument_parsing()
@@ -1114,6 +1110,7 @@ class ControlServer(utils.Base):
     def run(self):
         """Waiting for new control commands and execute them.
         """
+        self._setup()
 
         while True:
             try:
@@ -1351,12 +1348,10 @@ class ControlServer(utils.Base):
             self.log_queue_listener.stop()
             self.log_queue_listener = None
 
-    def __exit__(self, exception_type, exception_value, traceback):
-        self.stop()
-
-    def __del__(self):
-        self.stop()
-
 
 if __name__ == '__main__':
-    ControlServer()
+    control_server = ControlServer()
+    try:
+        control_server.run()
+    finally:
+        control_server.stop()
