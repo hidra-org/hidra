@@ -586,6 +586,15 @@ class DataManager(Base):
 
         signal.signal(signal.SIGTERM, self.signal_term_handler)
 
+        if (
+            config_df["remove_data"] in ["with_confirmation", "stop_on_error"]
+            and not config_df["use_data_stream"]
+        ):
+            self.log.error(
+                "Using remove_data: %s with use_data_stream: False is not supported",
+                config_df["remove_data"])
+            sys.exit(1)
+
         self.use_cleaner = (
             config_df["use_data_stream"]
             and config_df["remove_data"] == "with_confirmation"
