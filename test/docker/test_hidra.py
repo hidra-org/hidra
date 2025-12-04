@@ -219,8 +219,8 @@ def stop_sender(sender_type):
     return out
 
 
-def clean_ramdisk(sender_type):
-    ramdisk_path = hidra_testdir / sender_type / "ramdisk"
+def clean_ramdisk(sender_type, ramdisk_name="ramdisk"):
+    ramdisk_path = hidra_testdir / sender_type / ramdisk_name
     for child in ramdisk_path.glob('*'):
         if child.is_file():
             child.unlink()
@@ -238,7 +238,10 @@ def clean_eiger_data():
 
 
 def start_sender(
-        sender_type="sender-freeze", eventdetector_type="inotify_events"):
+        sender_type="sender-freeze",
+        eventdetector_type="inotify_events",
+        ramdisks=["/ramdisk"],
+):
     senders = [
         "sender-freeze", "sender-debian", "sender-debian10",
         "sender-debian11", "sender-debian12", "sender-suse"]
@@ -248,11 +251,26 @@ def start_sender(
     if eventdetector_type not in event_types:
         raise ValueError("Event type not supported")
 
+    # Configure sender type
     out = docker_run(
         sender_type, [
             "sed", "-i", "-r",
             "s/(\\s*type:\\s*)({})/\\1{}/g".format(
                 "|".join(event_types), eventdetector_type),
+            "/opt/hidra/conf/datamanager_p00.yaml"])
+    print("sed:", out.stdout, out.stderr)
+    assert out.returncode == 0
+
+    # Configure ramdisks
+    if len(ramdisks) == 1:
+        escaped_ramdisk_string = "\\" + ramdisks[0]
+    else:
+        escaped_ramdisk_string = "\\[\\{}\\]".format(", \\".join(ramdisks))
+    out = docker_run(
+        sender_type, [
+            "sed", "-i", "-r",
+            "s/(\\s*monitored_dir:\\s*&monitored_dir\\s*)([^\\n]+)/\\1{}/g".format(
+                escaped_ramdisk_string),
             "/opt/hidra/conf/datamanager_p00.yaml"])
     print("sed:", out.stdout, out.stderr)
     assert out.returncode == 0
@@ -317,6 +335,27 @@ def sender_instance(stopped_sender_instance):
     start_sender(
         sender_type=sender_type, eventdetector_type=eventdetector_type)
     yield {**stopped_sender_instance, "ramdisk_path": ramdisk_path}
+    out = stop_sender(sender_type)
+    print(out.stdout)
+    print(out.stderr)
+
+
+@pytest.fixture(scope="module")
+def sender_instance_multiple_ramdisks(eventdetector_type):
+    sender_type = "sender-debian10"  # supports all eventdetector types
+    stop_sender(sender_type)
+    ramdisk_path_1 = clean_ramdisk(sender_type, "ramdisk_1")
+    ramdisk_path_2 = clean_ramdisk(sender_type, "ramdisk_2")
+    start_sender(
+        sender_type=sender_type,
+        eventdetector_type=eventdetector_type,
+        ramdisks=["/ramdisk_1", "/ramdisk_2"],
+    )
+    yield {
+        "sender_type": sender_type,
+        "eventdetector_type": eventdetector_type,
+        "ramdisk_paths": [ramdisk_path_1, ramdisk_path_2]
+    }
     out = stop_sender(sender_type)
     print(out.stdout)
     print(out.stderr)
@@ -549,7 +588,6 @@ def test_control_client_beamline_not_in_netgroup():
         docker_run("ldap", cmd)
 
 
-
 def test_control_client_detector_not_in_netgroup():
     ret = control_client("start", beamline="p00", det="eiger2")
     assert (
@@ -678,6 +716,38 @@ def test_sender_file_writing_nested_subdir(sender_instance):
     # uid and gid are hard coded in receiver/Dockerfile
     assert stat.st_uid == 1234
     assert stat.st_gid == 1234
+
+
+def test_sender_file_writing_multiple_monitored_dirs(sender_instance_multiple_ramdisks):
+    sender_type = sender_instance_multiple_ramdisks["sender_type"]
+    eventdetector_type = sender_instance_multiple_ramdisks["eventdetector_type"]
+    ramdisk_paths = sender_instance_multiple_ramdisks["ramdisk_paths"]
+    filenames = [
+        Path("current/raw/filewriting_{}_{}_ramdisk_{}.txt".format(
+            sender_type, eventdetector_type, i + 1))
+        for i, _ in enumerate(ramdisk_paths)
+    ]
+    sender_paths = [
+        ramdisk_path / filename
+        for ramdisk_path, filename in zip(ramdisk_paths, filenames)
+    ]
+    for sender_path in sender_paths:
+        sender_path.write_text("hello world")
+
+    receiver_paths = [
+        receiver_beamline / filename
+        for filename in filenames
+    ]
+
+    # first file can take longer
+    for sender_path, receiver_path in zip(sender_paths, receiver_paths):
+        assert wait_for(lambda: not sender_path.is_file(), timeout=60)
+        assert wait_for(receiver_path.is_file)
+        assert wait_for(lambda: receiver_path.read_text() == "hello world")
+        stat = receiver_path.stat()
+        # uid and gid are hard coded in receiver/Dockerfile
+        assert stat.st_uid == 1234
+        assert stat.st_gid == 1234
 
 
 def test_receiver_groups():

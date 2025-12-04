@@ -133,29 +133,34 @@ class EventDetectorBase(Base):
         if "monitored_dir" not in self.config_ed[self.ed_type]:
             return
 
-        # get rid of formatting errors
-        self.config["monitored_dir"] = os.path.normpath(
-            self.config["monitored_dir"]
-        )
+        # Ensure this is a list for consistency with multiple monitored_dirs
+        if isinstance(self.config["monitored_dir"], str):
+            self.config["monitored_dir"] = [self.config["monitored_dir"]]
 
-        utils.check_existence(self.config["monitored_dir"])
-        if ("create_fix_subdirs" in self.config
-                and self.config["create_fix_subdirs"]):
-            # create the subdirectories which do not exist already
-            utils.create_sub_dirs(
-                dir_path=self.config["monitored_dir"],
-                subdirs=self.config["fix_subdirs"],
-                dirs_not_to_create=self.config_ed["dirs_not_to_create"]
-            )
-        else:
-            # the subdirs have to exist because handles can only be added to
-            # directories inside a directory in which a handle was already set,
-            # e.g. handlers set to current/raw, local:
-            # - all subdirs created are detected + handlers are set
-            # - new directory on the same as monitored dir
-            #   (e.g. current/scratch_bl) cannot be detected
-            utils.check_all_sub_dir_exist(self.config["monitored_dir"],
-                                          self.config["fix_subdirs"])
+        # get rid of formatting errors
+        self.config["monitored_dir"] = [
+            os.path.normpath(mon_dir) for mon_dir in self.config["monitored_dir"]
+        ]
+
+        for dir_path in self.config["monitored_dir"]:
+            utils.check_existence(dir_path)
+            if ("create_fix_subdirs" in self.config
+                    and self.config["create_fix_subdirs"]):
+                # create the subdirectories which do not exist already
+                utils.create_sub_dirs(
+                    dir_path=dir_path,
+                    subdirs=self.config["fix_subdirs"],
+                    dirs_not_to_create=self.config_ed["dirs_not_to_create"]
+                )
+            else:
+                # the subdirs have to exist because handles can only be added to
+                # directories inside a directory in which a handle was already set,
+                # e.g. handlers set to current/raw, local:
+                # - all subdirs created are detected + handlers are set
+                # - new directory on the same as monitored dir
+                #   (e.g. current/scratch_bl) cannot be detected
+                utils.check_all_sub_dir_exist(dir_path,
+                                            self.config["fix_subdirs"])
 
     @abc.abstractmethod
     def get_new_event(self):

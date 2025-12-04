@@ -33,12 +33,17 @@ eventdetector:
     #type: experimental_events.sync_ewmscp_events
 
     inotifyx_events:
-        # Directory to be monitor for changes
-        # Inside this directory only the subdirectories "commissioning",
-        # "current" and "local" are monitored
+        # Directory to be monitor for changes. Inside this directory only the
+        # subdirectories listed under fixed_subdirs are monitored
         monitored_dir: &monitored_dir /opt/hidra/data/source
         #monitored_dir: &monitored_dir /rd
         #monitored_dir: &monitored_dir /ramdisk
+        # It is possible to provide multiple directories as a list, e.g.:
+        # monitored_dir: &monitored_dir [/disk1, /disk2]
+        # Note that files from these directories are still transferred to the
+        # same target directory. Therefore, relative file paths inside these
+        # directories must be different to avoid overwriting files.
+
 
         # Subdirectories to be monitored and to store data to. These directory
         # have to exist when HiDRA is started and should not be removed during

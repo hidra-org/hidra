@@ -164,8 +164,7 @@ class EventDetector(EventDetectorBase):
 
         self.file_descriptor = inotifyx.init()
 
-        # TODO why is this necessary
-        self.paths = [self.config["monitored_dir"]]
+        self.paths = self.config["monitored_dir"]
         self.mon_subdirs = self.config["fix_subdirs"]
 
         self.mon_regex_per_event = self.config["monitored_events"]
@@ -250,9 +249,11 @@ class EventDetector(EventDetectorBase):
 
         # Add the default subdirs
         self.log.debug("paths: %s", self.paths)
-        dirs_to_walk = [os.path.normpath(os.path.join(self.paths[0],
-                                                      directory))
-                        for directory in self.mon_subdirs]
+        dirs_to_walk = [
+            os.path.normpath(os.path.join(path, directory))
+            for path in self.paths
+            for directory in self.mon_subdirs
+        ]
         self.log.debug("dirs_to_walk: %s", dirs_to_walk)
         monitored_dirs = []
 
