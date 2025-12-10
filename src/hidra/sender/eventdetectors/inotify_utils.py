@@ -103,8 +103,11 @@ def common_stop(config, log):
     log.debug("Checking for left over files in monitored_dir")
 
     remaining_files = utils.get_files_in_dir(
-        dirs=[os.path.join(config["monitored_dir"], d)
-              for d in config["fix_subdirs"]]
+        dirs=[
+            os.path.join(mon_dir, d)
+            for mon_dir in config["monitored_dir"]
+            for d in config["fix_subdirs"]
+        ]
     )
 
     if remaining_files:
@@ -150,9 +153,11 @@ class CleanUp(threading.Thread):
         # pylint: disable=invalid-name
         global _file_event_list
 
-        dirs_to_walk = [os.path.normpath(os.path.join(self.paths[0],
-                                                      directory))
-                        for directory in self.mon_subdirs]
+        dirs_to_walk = [
+            os.path.normpath(os.path.join(path, directory))
+            for path in self.paths
+            for directory in self.mon_subdirs
+        ]
 
         while self.run_loop:
             try:

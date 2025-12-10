@@ -172,9 +172,8 @@ class EventDetector(EventDetectorBase):
             self.timeout = 1
 
         watch_dirs = [
-            os.path.normpath(
-                os.path.join(self.config["monitored_dir"], directory)
-            )
+            os.path.normpath(os.path.join(mon_dir, directory))
+            for mon_dir in self.config["monitored_dir"]
             for directory in self.config["fix_subdirs"]
         ]
         self.inotify = inotify.adapters.InotifyTrees(watch_dirs)
@@ -183,8 +182,7 @@ class EventDetector(EventDetectorBase):
             "timeout_s": self.timeout
         }
 
-        # TODO why is this necessary
-        self.paths = [self.config["monitored_dir"]]
+        self.paths = self.config["monitored_dir"]
         self.mon_subdirs = self.config["fix_subdirs"]
 
         self.mon_regex_per_event = self.config["monitored_events"]

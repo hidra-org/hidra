@@ -167,6 +167,8 @@ services:
         volumes:
             - ./build:/hidra/build
             - ${HIDRA_TESTDIR}/sender-debian10/ramdisk:/ramdisk
+            - ${HIDRA_TESTDIR}/sender-debian10/ramdisk_1:/ramdisk_1
+            - ${HIDRA_TESTDIR}/sender-debian10/ramdisk_2:/ramdisk_2
         ports:
             - "5687:5687"
         depends_on:

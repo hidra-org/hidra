@@ -37,6 +37,10 @@ mkdir -p ${HIDRA_TESTDIR}/sender-debian/ramdisk
 chmod -R 777 ${HIDRA_TESTDIR}/sender-debian/ramdisk
 mkdir -p ${HIDRA_TESTDIR}/sender-debian10/ramdisk
 chmod -R 777 ${HIDRA_TESTDIR}/sender-debian10/ramdisk
+mkdir -p ${HIDRA_TESTDIR}/sender-debian10/ramdisk_1
+chmod -R 777 ${HIDRA_TESTDIR}/sender-debian10/ramdisk_1
+mkdir -p ${HIDRA_TESTDIR}/sender-debian10/ramdisk_2
+chmod -R 777 ${HIDRA_TESTDIR}/sender-debian10/ramdisk_2
 mkdir -p ${HIDRA_TESTDIR}/sender-debian11/ramdisk
 chmod -R 777 ${HIDRA_TESTDIR}/sender-debian11/ramdisk
 mkdir -p ${HIDRA_TESTDIR}/sender-debian12/ramdisk
@@ -110,6 +114,8 @@ docker-compose exec -T --env TERM=linux sender-debian10 systemctl status hidra@p
 docker-compose exec -T --env TERM=linux sender-debian10 systemctl stop hidra@p00
 
 chmod -R 777 ${HIDRA_TESTDIR}/sender-debian10/ramdisk
+chmod -R 777 ${HIDRA_TESTDIR}/sender-debian10/ramdisk_1
+chmod -R 777 ${HIDRA_TESTDIR}/sender-debian10/ramdisk_2
 
 
 # setup sender-debian11

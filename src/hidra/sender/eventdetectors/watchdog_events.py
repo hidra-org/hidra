@@ -180,7 +180,7 @@ class WatchdogEventHandler(RegexMatchingEventHandler):
         )
         self.log.debug("init")
 
-        self.paths = [os.path.normpath(config["monitored_dir"])]
+        self.paths = config["monitored_dir"]
 
         # learn what events to detect
         self.detect_all = False
@@ -574,12 +574,13 @@ class EventDetector(EventDetectorBase):
         checking_thread.
         """
 
-        self.mon_dir = os.path.normpath(self.config["monitored_dir"])
+        self.mon_dir = self.config["monitored_dir"]
         self.mon_subdirs = self.config["fix_subdirs"]
 
-        self.paths = [os.path.normpath(os.path.join(self.mon_dir,
-                                                    directory))
-                      for directory in self.config["fix_subdirs"]]
+        self.paths = [
+            os.path.normpath(os.path.join(mon_dir, directory))
+            for mon_dir in self.config["monitored_dir"]
+            for directory in self.config["fix_subdirs"]]
         self.log.debug("paths: %s", self.paths)
 
         self.lock = threading.Lock()
