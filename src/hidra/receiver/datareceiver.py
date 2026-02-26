@@ -641,7 +641,7 @@ class DataReceiver(object):
         self.run_loop = False
 
         if self.transfer is not None:
-            self.transfer.status = [b"ERROR", "receiver is shutting down"]
+            self.transfer.status = [b"ERROR", b"receiver is shutting down"]
 
             if store:
                 stop_timeout = 0.5
