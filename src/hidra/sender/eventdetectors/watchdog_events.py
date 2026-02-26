@@ -519,12 +519,6 @@ class CheckModTime(threading.Thread):
             self.log.info("Checking pool joined")
             self.pool = None
 
-    def __exit__(self, exception_type, exception_value, traceback):
-        self.stop()
-
-    def __del__(self):
-        self.stop()
-
 
 class EventDetector(EventDetectorBase):
     """

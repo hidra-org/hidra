@@ -181,9 +181,3 @@ class EventDetectorBase(Base):
         """Stop and clean up.
         """
         pass
-
-    def __exit__(self, exception_type, exception_value, traceback):
-        self.stop()
-
-    def __del__(self):
-        self.stop()
