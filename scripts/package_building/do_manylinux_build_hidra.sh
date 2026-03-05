@@ -48,12 +48,12 @@ fi
 
 # package
 HIDRA_DIR=$(pwd)
-. ${HIDRA_DIR}/scripts/package_building/build_utils.sh
+. "${HIDRA_DIR}/scripts/package_building/build_utils.sh"
 get_hidra_version
 
-rm -rf ${HIDRA_DIR}/build/hidra
-mv ${HIDRA_DIR}/build/exe.linux-x86_64-3.7 ${HIDRA_DIR}/build/hidra
-mkdir -p ${HIDRA_DIR}/build/freeze
-pushd ${HIDRA_DIR}/build
+rm -rf "${HIDRA_DIR}/build/hidra"
+mv "${HIDRA_DIR}/build/exe.linux-x86_64-3.7" "${HIDRA_DIR}/build/hidra"
+mkdir -p "${HIDRA_DIR}/build/freeze"
+pushd "${HIDRA_DIR}/build"
 tar -czf freeze/hidra-${HIDRA_VERSION}-x86_64-3.7-manylinux1.tar.gz hidra
 popd
