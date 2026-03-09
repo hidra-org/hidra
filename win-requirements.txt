@@ -1,0 +1,7 @@
+future
+ldap3
+PyYAML
+pyzmq
+requests
+setproctitle
+watchdog
