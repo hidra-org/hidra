@@ -370,7 +370,7 @@ elif [ -f /etc/debian_version ] ; then
 
         # Checked the PID file exists and check the actual status of process
         if [ -e "$PIDFILE" ]; then
-            pidof "$NAME" >/dev/null
+            pidofproc -p "$PIDFILE" "$NAME" >/dev/null
             status=$?
             # If the status is SUCCESS then don't need to start again.
             if [ $status -eq 0 ]; then
@@ -399,7 +399,7 @@ elif [ -f /etc/debian_version ] ; then
             sleep $START_CHECK_DELAY
 
             # detect status
-            pidof "$NAME" >/dev/null
+            pidofproc -p "$PIDFILE" "$NAME" >/dev/null
             status=$?
             if [ $status = "0" ]; then
                 log_success_msg "Starting $NAME"
@@ -436,7 +436,7 @@ elif [ -f /etc/debian_version ] ; then
             log_msg="Stopping $NAME"
 
             # returns: 0 if process exists, 1 otherwise
-            pidof "$NAME" > /dev/null
+            pidofproc -p "$PIDFILE" "$NAME" > /dev/null
             status=$?
             # If the status is SUCCESS then don't need to start again.
             if [ $status -eq 0 ]; then
@@ -479,7 +479,7 @@ elif [ -f /etc/debian_version ] ; then
 
     do_status()
     {
-        status_of_proc "$NAME" "$NAME" && return 0 || return $?
+        status_of_proc -p "$PIDFILE" "$NAME" "$NAME" && return 0 || return $?
     }
 
     #
