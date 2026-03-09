@@ -374,7 +374,7 @@ elif [ -f /etc/debian_version ] ; then
             status=$?
             # If the status is SUCCESS then don't need to start again.
             if [ $status -eq 0 ]; then
-                log_success_msg "$NAME is already running"
+                log_success_msg " $NAME is already running"
                 return 0
             fi
         fi
@@ -402,14 +402,14 @@ elif [ -f /etc/debian_version ] ; then
             pidofproc -p "$PIDFILE" "$NAME" >/dev/null
             status=$?
             if [ $status = "0" ]; then
-                log_success_msg "Starting $NAME"
+                log_success_msg " OK"
                 return 0
             else
-                log_failure_msg "Starting $NAME"
+                log_failure_msg
                 return 1
             fi
         else
-            log_failure_msg "Starting $NAME"
+            log_failure_msg
             return 1
         fi
     }
@@ -433,7 +433,7 @@ elif [ -f /etc/debian_version ] ; then
 
         # Stop the daemon.
         if [ -e "$PIDFILE" ]; then
-            log_msg="Stopping $NAME"
+            log_daemon_msg "Stopping $NAME"
 
             # returns: 0 if process exists, 1 otherwise
             pidofproc -p "$PIDFILE" "$NAME" > /dev/null
@@ -448,12 +448,12 @@ elif [ -f /etc/debian_version ] ; then
                     # stop successful but the end of the schedule was
                     # reached and the processes were still running
                     cleanup
-                    log_success_msg "$log_msg"
+                    log_success_msg " OK"
                     return 1
                 elif [ "$daemon_status" = 0 ]; then
                     # stop successful
                     cleanup
-                    log_success_msg "$log_msg"
+                    log_success_msg " OK"
                     return 0
                 fi
 
@@ -467,13 +467,13 @@ elif [ -f /etc/debian_version ] ; then
                 [ "$?" = 2 ] && cleanup && return 1
 
                 cleanup
-                log_success_msg "$log_msg"
+                log_success_msg " OK"
             else
                 cleanup
-                log_success_msg "$log_msg"
+                log_success_msg " OK"
             fi
         else
-            log_success_msg "$NAME is not running"
+            log_success_msg " $NAME is not running"
         fi
     }
 
