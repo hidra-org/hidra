@@ -1,15 +1,22 @@
 #!/bin/bash
-# This script builds Hidra for Windows. It can be executed by Git Bash and
-# should be run in a dedicated Python virtual environment.
+# This script builds Hidra for Windows. It can be executed on Windows by "Git
+# Bash" or on Linux with Python installed under wine. It should be run in a
+# dedicated Python virtual environment.
 
 set -uex
 
-PYBIN=python
+# Detect the environment and set the Python binary accordingly
+if [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "win32" ]]; then
+    PYBIN=python
+    zip=(/c/Program\ Files/7-Zip/7z.exe a)
+else
+    PYBIN="wine python"
+    zip=("zip" -r)
+fi
+
 py_ver=$($PYBIN -c 'import platform; print(platform.python_version())')
 py_ver=${py_ver%.*}
 [[ $py_ver =~ 3\.(7|8|9|10|11|12) ]] || exit 1
-
-zip=/c/Program\ Files/7-Zip/7z.exe
 
 if git show-ref --verify --quiet refs/heads/local_patches; then
     # a branch named local_patches exists locally
@@ -42,5 +49,5 @@ mv "${HIDRA_DIR}"/build/exe.win-amd64-${py_ver} "${HIDRA_DIR}"/build/hidra
 mkdir -p "${HIDRA_DIR}"/build/freeze
 pushd "${HIDRA_DIR}"/build
 rm -f freeze/hidra-${HIDRA_VERSION}-amd64-${py_ver}-win.zip
-"$zip" a freeze/hidra-${HIDRA_VERSION}-amd64-${py_ver}-win.zip hidra
+"${zip[@]}" freeze/hidra-${HIDRA_VERSION}-amd64-${py_ver}-win.zip hidra
 popd

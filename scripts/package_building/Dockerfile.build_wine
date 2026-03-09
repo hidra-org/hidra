@@ -1,0 +1,27 @@
+FROM debian:bookworm
+
+RUN dpkg --add-architecture i386 && apt-get update \
+    && apt-get install -y \
+    wine \
+    wine32 \
+    wine64 \
+    xvfb \
+    wget \
+    git \
+    zip \
+    less \
+    nano
+
+ENV WINEPREFIX=/wine \
+    WINARCH=win64 \
+    WINEDLLOVERRIDES="mscoree,mshtml="
+
+RUN wget https://www.python.org/ftp/python/3.11.9/python-3.11.9-amd64.exe \
+    && xvfb-run -a wine winecfg -v win10 \
+    && xvfb-run -a wine python-3.11.9-amd64.exe /quiet InstallAllUsers=1 PrependPath=1 TargetDir="C:\\Python" \
+    && wine python --version \
+    && rm python-3.11.9-amd64.exe \
+    && wineserver -w
+
+# Note: without explicitly waiting for the wineserver to shut down, the wine
+# prefix might get corrupted.
