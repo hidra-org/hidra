@@ -123,6 +123,30 @@ services:
             - ldap
         tty: true
 
+    sender-wine:
+        image: hidratest-sender-wine
+        build:
+            context: test/docker/sender
+            dockerfile: Dockerfile_wine
+            args:
+                user_uid: ${UID}
+        platform: linux
+        container_name: sender-wine
+        hostname: sender-wine
+        domainname: hidra.test
+        init: true
+        user: "${UID}:${UID}"
+        networks:
+            hidra:
+                aliases:
+                    - sender-wine.hidra.test
+        volumes:
+            - ./build:/hidra/build
+            - ${HIDRA_TESTDIR}/sender-wine/ramdisk:/ramdisk
+        depends_on:
+            - ldap
+        tty: true
+
     sender-debian:
         image: hidratest-sender-debian
         build:
