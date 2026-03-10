@@ -446,7 +446,7 @@ class CheckModTime(threading.Thread):
                                        _potential_close_events)
                 _events_marked_to_remove = []
 
-                time.sleep(self.action_time)
+                self.stopper.wait(self.action_time)
             except Exception:
                 self.log.error("Stopping loop due to error", exc_info=True)
                 break
@@ -518,12 +518,6 @@ class CheckModTime(threading.Thread):
             self.pool.join()
             self.log.info("Checking pool joined")
             self.pool = None
-
-    def __exit__(self, exception_type, exception_value, traceback):
-        self.stop()
-
-    def __del__(self):
-        self.stop()
 
 
 class EventDetector(EventDetectorBase):

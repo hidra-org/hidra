@@ -585,6 +585,7 @@ class DataManager(Base):
                 multiprocessing.get_start_method())
 
         signal.signal(signal.SIGTERM, self.signal_term_handler)
+        signal.signal(signal.SIGINT, self.signal_term_handler)
 
         if (
             config_df["remove_data"] in ["with_confirmation", "stop_on_error"]
@@ -1108,9 +1109,15 @@ class DataManager(Base):
     def signal_term_handler(self, signal_to_react, frame):
         """React on external SIGTERM signal.
         """
+        signal_type = "unknown"
+        if signal_to_react == 2:
+            signal_type = "SIGINT"
+        elif signal_to_react == 15:
+            signal_type = "SIGTERM"
 
-        self.log.debug('got SIGTERM')
+        self.log.debug('got %s signal', signal_type)
         self.stop()
+
 
 # copied from https://github.com/pyinstaller/pyinstaller/blob/93285ece5a02932c6dac8f018bf107e7618d7d3c/PyInstaller/hooks/rthooks/pyi_rth_multiprocessing.py#L24  # noqa
 def _freeze_support():
