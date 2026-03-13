@@ -12,16 +12,37 @@ RUN dpkg --add-architecture i386 && apt-get update \
     less \
     nano
 
-ENV WINEPREFIX=/wine \
-    WINARCH=win64 \
+ENV WINARCH=win64 \
     WINEDLLOVERRIDES="mscoree,mshtml="
 
-RUN wget https://www.python.org/ftp/python/3.11.9/python-3.11.9-amd64.exe \
+RUN export WINEPREFIX=/wine \
+    && wget https://www.python.org/ftp/python/3.11.9/python-3.11.9-amd64.exe \
     && xvfb-run -a wine winecfg -v win10 \
     && xvfb-run -a wine python-3.11.9-amd64.exe /quiet InstallAllUsers=1 PrependPath=1 TargetDir="C:\\Python" \
     && wine python --version \
     && rm python-3.11.9-amd64.exe \
-    && wineserver -w
+    && wineserver -w \
+    && chmod -R 777 /wine
 
 # Note: without explicitly waiting for the wineserver to shut down, the wine
 # prefix might get corrupted.
+
+COPY fixuser.sh fixuser.sh
+
+# wine refuses to start with WINEPREFIX that is not owned by the current user.
+# Use symlinks to the original contents to circumvent this check, see
+# https://bugs.winehq.org/show_bug.cgi?id=11112#c18
+RUN cat << 'EOF' > /fixwineprefix.sh
+#!/bin/bash
+mkdir -p $HOME/.wine
+for path in /wine/drive_c /wine/*.reg; do
+    ln -s $path $HOME/.wine/$(basename $path) || exit 1
+done
+exec "$@"
+EOF
+
+WORKDIR /hidra
+
+ENTRYPOINT ["bash", "/fixuser.sh", "/hidra", "bash", "/fixwineprefix.sh"]
+
+CMD ["bash"]
