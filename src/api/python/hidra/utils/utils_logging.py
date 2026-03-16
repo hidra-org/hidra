@@ -124,12 +124,11 @@ def convert_str_to_log_level(level):
     return getattr(logging, level.upper())
 
 
-def get_stream_log_handler(loglevel="debug", datafmt=None, fmt=None):
+def get_stream_log_handler(loglevel="debug", fmt=None):
     """Initializes a stream handler and formats it.
 
     Args:
         loglevel: Which log level to be used (e.g. debug).
-        datafmt: The data format to be used.
         fmt: The format of the output messages.
 
     Returns:
@@ -147,8 +146,6 @@ def get_stream_log_handler(loglevel="debug", datafmt=None, fmt=None):
         sys.exit(1)
 
     # set format
-    if datafmt is None:
-        datefmt = "%Y-%m-%d %H:%M:%S"
     if fmt is None:
         if loglevel == "debug":
             fmt = ("[%(asctime)s] > [%(name)s] > "
@@ -158,7 +155,7 @@ def get_stream_log_handler(loglevel="debug", datafmt=None, fmt=None):
 
     loglvl = convert_str_to_log_level(loglevel)
 
-    formatter = logging.Formatter(datefmt=datefmt, fmt=fmt)
+    formatter = logging.Formatter(fmt=fmt)
     handler = logging.StreamHandler()
     handler.setFormatter(formatter)
     handler.setLevel(loglvl)
@@ -169,7 +166,6 @@ def get_stream_log_handler(loglevel="debug", datafmt=None, fmt=None):
 def get_file_log_handler(logfile,
                          logsize,
                          loglevel="debug",
-                         datafmt=None,
                          fmt=None):
     """Initializes a file handler and formats it.
 
@@ -177,7 +173,6 @@ def get_file_log_handler(logfile,
         logfile: The name of the log file.
         logsize: At which size the log file should be rotated (Linux only).
         loglevel: Which log level to be used (e.g. debug).
-        datafmt: The data format to be used.
         fmt: The format of the output messages.
 
     Returns:
@@ -190,8 +185,6 @@ def get_file_log_handler(logfile,
     # pylint: disable=redefined-variable-type
 
     # set format
-    if datafmt is None:
-        datefmt = "%Y-%m-%d %H:%M:%S"
     if fmt is None:
         fmt = ("[%(asctime)s] "
                "[%(module)s:%(funcName)s:%(lineno)d] "
@@ -209,7 +202,7 @@ def get_file_log_handler(logfile,
                                                        mode='a',
                                                        maxBytes=logsize,
                                                        backupCount=5)
-    formatter = logging.Formatter(datefmt=datefmt, fmt=fmt)
+    formatter = logging.Formatter(fmt=fmt)
     handler.setFormatter(formatter)
     handler.setLevel(loglevel)
 
@@ -336,7 +329,6 @@ def init_logging(filename, verbose, onscreen_loglevel=False):
         file_loglevel = logging.DEBUG
 
     # Set format
-    datefmt = "%Y-%m-%d_%H:%M:%S"
 #    filefmt = ("[%(asctime)s] "
 #               "[%(module)s:%(funcName)s:%(lineno)d] "
 #               "[%(name)s] [%(levelname)s] %(message)s")
@@ -351,7 +343,6 @@ def init_logging(filename, verbose, onscreen_loglevel=False):
     # log everything to file
     logging.basicConfig(level=file_loglevel,
                         format=filefmt,
-                        datefmt=datefmt,
                         filename=filename,
                         filemode="a")
 
