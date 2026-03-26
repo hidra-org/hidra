@@ -208,7 +208,7 @@ def start_sender_systemctl(sender):
 
 
 def stop_sender(sender_type):
-    if sender_type in ["sender-freeze", "sender-suse"]:
+    if sender_type in ["sender-freeze", "sender-wine", "sender-suse"]:
         out = stop_sender_script(sender_type)
     elif sender_type in [
             "sender-debian", "sender-debian10", "sender-debian11", "sender-debian12"]:
@@ -243,7 +243,7 @@ def start_sender(
         ramdisks=["/ramdisk"],
 ):
     senders = [
-        "sender-freeze", "sender-debian", "sender-debian10",
+        "sender-freeze", "sender-wine", "sender-debian", "sender-debian10",
         "sender-debian11", "sender-debian12", "sender-suse"]
     if sender_type not in senders:
         raise ValueError("Sender not supported")
@@ -275,7 +275,7 @@ def start_sender(
     print("sed:", out.stdout, out.stderr)
     assert out.returncode == 0
 
-    if sender_type in ["sender-freeze", "sender-suse"]:
+    if sender_type in ["sender-freeze", "sender-wine", "sender-suse"]:
         out = start_sender_script(sender_type)
         print("start:", out.stdout, out.stderr)
         assert "OK" in out.stdout or "..done" in out.stdout
@@ -302,7 +302,7 @@ def start_sender(
 @pytest.fixture(
     scope="module",
     params=[
-        "sender-freeze", "sender-debian", "sender-debian10", "sender-debian11",
+        "sender-freeze", "sender-wine", "sender-debian", "sender-debian10", "sender-debian11",
         "sender-debian12", "sender-suse"])
 def sender_type(request):
     return request.param
@@ -321,6 +321,8 @@ def stopped_sender_instance(sender_type, eventdetector_type):
             eventdetector_type == "inotify_events"
             and sender_type in ["sender-debian11", "sender-debian12"]):
         # inotify is unsupported on Debain 11
+        pytest.skip()
+    if sender_type == "sender-wine" and eventdetector_type != "watchdog_events":
         pytest.skip()
     stop_sender(sender_type)
     return {
@@ -617,7 +619,7 @@ def test_control_client_stop_old_instances(eiger_instance_not_in_netgroup):
 
 def test_sender_status_stopped(stopped_sender_instance):
     sender_type = stopped_sender_instance["sender_type"]
-    if sender_type in ["sender-freeze", "sender-suse"]:
+    if sender_type in ["sender-freeze", "sender-wine", "sender-suse"]:
         out = docker_run(
             sender_type,
             ["/opt/hidra/hidra.sh", "status", "--beamline", "p00"])
@@ -633,7 +635,7 @@ def test_sender_status_stopped(stopped_sender_instance):
 
 def test_sender_status_running(sender_instance):
     sender_type = sender_instance["sender_type"]
-    if sender_type in ["sender-freeze", "sender-suse"]:
+    if sender_type in ["sender-freeze", "sender-wine", "sender-suse"]:
         out = docker_run(
             sender_type,
             ["/opt/hidra/hidra.sh", "status", "--beamline", "p00"])
@@ -683,7 +685,12 @@ def test_sender_file_writing(sender_instance):
     assert wait_for(lambda: not sender_paths[0].is_file(), timeout=20)
     for i, (sender_path, receiver_path) in enumerate(
             zip(sender_paths, receiver_paths)):
-        assert wait_for(lambda: not sender_path.is_file(), timeout=2)
+        if sender_type == "sender-wine":
+            # Hidra under wine is very slow for some reason
+            timeout = 60
+        else:
+            timeout = 2
+        assert wait_for(lambda: not sender_path.is_file(), timeout=timeout)
         assert wait_for(receiver_path.is_file, timeout=1)
         assert wait_for(
             lambda: receiver_path.read_text() == "hello world" + str(i),

@@ -33,6 +33,8 @@ mkdir -p ${HIDRA_TESTDIR}/receiver/beamline/p00/local/scratch_bl
 chmod -R 777 ${HIDRA_TESTDIR}/receiver/beamline/p00
 mkdir -p ${HIDRA_TESTDIR}/sender-freeze/ramdisk
 chmod -R 777 ${HIDRA_TESTDIR}/sender-freeze/ramdisk
+mkdir -p ${HIDRA_TESTDIR}/sender-wine/ramdisk
+chmod -R 777 ${HIDRA_TESTDIR}/sender-wine/ramdisk
 mkdir -p ${HIDRA_TESTDIR}/sender-debian/ramdisk
 chmod -R 777 ${HIDRA_TESTDIR}/sender-debian/ramdisk
 mkdir -p ${HIDRA_TESTDIR}/sender-debian10/ramdisk
@@ -81,6 +83,27 @@ docker-compose exec -T --env TERM=linux sender-freeze /opt/hidra/hidra.sh stop -
 
 chmod -R 777 ${HIDRA_TESTDIR}/sender-freeze/ramdisk
 
+
+# setup sender-wine
+docker-compose exec sender-wine mkdir -p /home/hidra/.wine/drive_c/hidra/
+docker-compose exec sender-wine unzip \
+    /hidra/build/freeze/hidra-${HIDRA_VERSION}*-amd64-3.11-win.zip \
+    -d /home/hidra/.wine/drive_c
+
+# /opt/hidra is a symlink to /home/hidra/.wine/drive_c/hidra
+docker-compose exec sender-wine cp /conf/datamanager_p00.yaml /opt/hidra/conf
+docker-compose exec sender-wine dos2unix /opt/hidra/hidra.sh
+docker-compose exec sender-wine sed -i 's&CONFIGDIR=$BASEDIR/conf&CONFIGDIR=C:/hidra/conf&' /opt/hidra/hidra.sh
+docker-compose exec sender-wine chmod +x /opt/hidra/hidra.sh
+
+# A small initial test
+# -T is necessary for the started processes to survive after the command finishes
+# --env TERM=linux is necessary for hidra.sh because of -T
+docker-compose exec -T --env TERM=linux sender-wine /opt/hidra/hidra.sh start --beamline p00
+docker-compose exec -T --env TERM=linux sender-wine /opt/hidra/hidra.sh status --beamline p00
+docker-compose exec -T --env TERM=linux sender-wine /opt/hidra/hidra.sh stop --beamline p00
+
+chmod -R 777 ${HIDRA_TESTDIR}/sender-wine/ramdisk
 
 # setup sender-debian
 docker-compose exec sender-debian apt update

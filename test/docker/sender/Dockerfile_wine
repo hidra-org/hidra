@@ -1,0 +1,30 @@
+FROM debian:12
+
+RUN apt update && apt install -y wine xvfb unzip dos2unix nano
+
+COPY datamanager_p00_win.yaml /conf/datamanager_p00.yaml
+
+ARG user_uid
+
+RUN groupadd --gid $user_uid hidra
+
+RUN adduser --uid $user_uid --gid $user_uid hidra
+
+# The following symlinks are needed because the tests assume a certain directory
+# structure that is used under Linux
+RUN  mkdir -p /home/hidra && chown hidra /home/hidra \
+     && ln -s /home/hidra/.wine/drive_c/hidra /opt/hidra \
+     && ln -s /home/hidra/.wine/drive_c/hidra/logs /var/log/hidra \
+     && ln -s /home/hidra/.wine/drive_c/hidra/data_source /ramdisk
+
+USER hidra
+
+RUN mkdir -p /home/hidra/.wine/drive_c/hidra/logs \
+    && mkdir -p /home/hidra/.wine/drive_c/hidra/data_source \
+    && mkdir -p /home/hidra/.wine/drive_c/hidra/conf \
+    && chmod -R 777 /home/hidra/.wine/drive_c/hidra
+
+COPY --chown=hidra datamanager-wine.sh /home/hidra/.wine/drive_c/hidra/datamanager
+COPY --chown=hidra get_receiver_status-wine.sh /home/hidra/.wine/drive_c/hidra/get_receiver_status
+
+WORKDIR /home/hidra/.wine/drive_c/hidra
