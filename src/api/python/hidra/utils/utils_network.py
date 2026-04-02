@@ -129,6 +129,11 @@ def execute_ldapsearch(log, ldap_cn, ldapuri):
         netgroup = _parse_ldap3(ldapuri=ldapuri, ldap_cn=ldap_cn, log=log)
 #        netgroup = _parse_ldapsearch(ldapuri=ldapuri, ldap_cn=ldap_cn,
 #                                     log=log)
+    except (ldap3.core.exceptions.LDAPSocketReceiveError,
+            ldap3.core.exceptions.LDAPSocketOpenError) as err:
+        # The ldap server is sometimes temporarily unavailable
+        log.info("Could not receive LDAP response: %s", err)
+        netgroup = []
     except Exception:
         # the code inside the try statement could not be tested properly so do
         # not stop if something was wrong.

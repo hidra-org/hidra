@@ -207,11 +207,20 @@ class EventDetectorImpl:
     def get_new_event(self):
         """Implementation of the abstract method get_new_event.
         """
+        files_stored = []
         try:
             files_stored = self._get_files_stored()
+        except requests.ConnectionError as err:
+            # Most likely cause is that the detector is offline
+            self.log.info("Could not connect to %s: %s", self.file_writer_url, err)
+        except requests.HTTPError as err:
+            # HTTP errors 404 and 500 seem to sometimes happen temporarily
+            self.log.warning("Could not get file list from %s: %s", self.file_writer_url, err)
         except Exception:
             self.log.error("Error in getting file list from %s",
                            self.file_writer_url, exc_info=True)
+
+        if not files_stored:
             # Wait till next try to prevent denial of service
             time.sleep(self.sleep_time)
             return []

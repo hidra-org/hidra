@@ -200,8 +200,9 @@ class Plugin(object):
             user_config = utils.load_config(self.user_config_path)
             config.update(user_config)
         except OSError as err:
-            logger.warning("Could not get user config: {}".format(err))
-            logger.warning("Default config is used")
+            logger.warning(
+                "Could not get user config: %s. Default config is used.", err
+            )
         return config
 
     def _get_config_time(self, file_path):
@@ -209,7 +210,7 @@ class Plugin(object):
             return path.getmtime(file_path)
         except OSError as err:
             logger.warning(
-                "Could not get creation time of user config: {}".format(err))
+                "Could not get creation time of user config: %s", err)
             return 0
 
     def _config_is_modified(self):
@@ -248,12 +249,12 @@ class AsapoWorker:
             expected_keys.append("data_source")
         try:
             self.file_regex = re.compile(file_regex)
-        except Exception as e:
-            raise utils.UsageError("Compilation of regex %s failed", file_regex)
+        except Exception:
+            raise utils.UsageError("Compilation of regex {} failed".format(file_regex))
 
         for expected_key in expected_keys:
             if expected_key not in self.file_regex.groupindex:
-                raise utils.UsageError("Expected regex group %s is not in regex", expected_key)
+                raise utils.UsageError("Expected regex group {} is not in regex".format(expected_key))
 
         # Other ingest modes are not yet implemented
         self.ingest_mode = get_ingest_mode(

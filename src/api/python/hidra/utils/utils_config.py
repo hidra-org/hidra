@@ -231,7 +231,7 @@ def load_config(config_file, config_type=None, log=logging):
             raise Exception()
 
     except Exception:
-        log.error("Could not load config file %s", config_file)
+        log.debug("Could not load config file %s", config_file)
         raise
 
     return config
