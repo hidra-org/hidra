@@ -1078,12 +1078,20 @@ class Transfer(Base):
             self._unpack_value(value, self.socket_conf["confirmation"])
             endpoint = self._get_endpoint(**self.socket_conf["confirmation"])
 
+            confirmation_options = []
+            # Enable heartbeats every N ms
+            confirmation_options.append((zmq.HEARTBEAT_IVL, 5000))
+            # Tell clients to reconnect if they didn't receive a heartbeat
+            # or message in M ms
+            confirmation_options.append((zmq.HEARTBEAT_TTL, 30000))
+
             self.confirmation_socket = self._start_socket(
                 name="confirmation socket",
                 sock_type=zmq.PUB,
                 sock_con="bind",
                 endpoint=endpoint,
                 is_ipv6=self.is_ipv6,
+                socket_options=confirmation_options,
             )
             # ---------------------------------- #
         else:
