@@ -243,6 +243,7 @@ services:
         volumes:
             - ./build:/hidra/build
             - ${HIDRA_TESTDIR}/sender-debian12/ramdisk:/ramdisk
+            - ${HIDRA_TESTDIR}/sender-debian12/local_target:/local_target
         ports:
             - "5690:5690"
         depends_on:

@@ -47,6 +47,8 @@ mkdir -p ${HIDRA_TESTDIR}/sender-debian11/ramdisk
 chmod -R 777 ${HIDRA_TESTDIR}/sender-debian11/ramdisk
 mkdir -p ${HIDRA_TESTDIR}/sender-debian12/ramdisk
 chmod -R 777 ${HIDRA_TESTDIR}/sender-debian12/ramdisk
+mkdir -p ${HIDRA_TESTDIR}/sender-debian12/local_target/current/raw
+chmod -R 777 ${HIDRA_TESTDIR}/sender-debian12/local_target
 mkdir -p ${HIDRA_TESTDIR}/sender-suse/ramdisk
 chmod -R 777 ${HIDRA_TESTDIR}/sender-suse/ramdisk
 
@@ -164,6 +166,7 @@ docker-compose exec sender-debian12 apt install -y \
     ./build/debian12/${HIDRA_VERSION_DEBIAN}/*.deb
 
 docker-compose exec sender-debian12 cp /conf/datamanager_p00.yaml /opt/hidra/conf
+docker-compose exec sender-debian12 cp /conf/datamanager_local.yaml /opt/hidra/conf
 
 # A small initial test
 # -T is necessary for the started processes to survive after the command finishes
