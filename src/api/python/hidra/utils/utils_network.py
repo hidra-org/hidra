@@ -36,6 +36,7 @@ import threading
 # import time
 
 import ldap3
+import zmq
 
 from .utils_datatypes import (
     IpcAddresses,  # noqa F401
@@ -651,7 +652,32 @@ def start_socket(name,
 
         # set socket options
         socket.linger = 0  # always
-        for param, value in socket_options:
+
+        if sock_con == "connect" and endpoint.startswith("tcp://"):
+            # Reconnect TCP sockets after receiving no packet for 1 min
+            socket_options_default = {
+                # enable keepalive probes
+                zmq.TCP_KEEPALIVE: 1,
+                # start sending proves after 30 s of inactivity
+                zmq.TCP_KEEPALIVE_IDLE: 30,
+                # send probes every 10 s
+                zmq.TCP_KEEPALIVE_INTVL: 10,
+                # connection is considered dead after 3 probes without response
+                zmq.TCP_KEEPALIVE_CNT: 3
+            }
+        else:
+            socket_options_default = {}
+
+        socket_options = dict(socket_options)
+        socket_options_default.update(socket_options)
+
+        for param, value in socket_options_default.items():
+            try:
+                param_name = param.name
+            except AttributeError:
+                # Old ZMQ versions don't provide a way to retrieve the option name
+                param_name = param
+            log.debug("Setting socket option %s: %s for %s", param_name, value, name)
             socket.setsockopt(param, value)
 
         # connect/bind the socket
