@@ -237,6 +237,31 @@ def clean_eiger_data():
     return eiger_data_path
 
 
+def stop_local_sender():
+    out = docker_run("sender-debian12", ["systemctl", "stop", "hidra@local"])
+    assert out.returncode == 0
+    return out
+
+
+def start_local_sender():
+    out = docker_run("sender-debian12", ["systemctl", "start", "hidra@local"])
+    assert out.returncode == 0
+
+    proc = docker_start(
+        "sender-debian12",
+        ["timeout", "10", "tail", "-f", "/var/log/hidra/datamanager_local.log"])
+    success, output = wait_for_output(
+        proc.stdout, r".*Waiting for new job", timeout=10)
+    proc.terminate()
+    print("waiting for tail")
+    comm = proc.communicate(timeout=5)
+    if not success:
+        print("comm:", comm)
+        print("output:", output)
+    print("done")
+    return out
+
+
 def start_sender(
         sender_type="sender-freeze",
         eventdetector_type="inotify_events",
@@ -647,6 +672,66 @@ def test_sender_status_running(sender_instance):
         out = docker_run(
             sender_type, ["systemctl", "is-active", "hidra@p00"])
         assert out.stdout == "active\n"
+
+
+def test_local_sender_file_writing():
+    stop_local_sender()
+    ramdisk_path = clean_ramdisk("sender-debian12")
+    local_target = hidra_testdir / "sender-debian12" / "local_target"
+    start_local_sender()
+    try:
+        filename = Path("current/raw/filewriting_local.txt")
+        sender_path = ramdisk_path / filename
+        sender_path.write_text("hello world")
+        local_path = local_target / filename
+
+        # first file can take longer
+        assert wait_for(lambda: not sender_path.is_file(), timeout=60)
+        assert wait_for(local_path.is_file)
+        assert wait_for(lambda: local_path.read_text() == "hello world")
+
+        # additional transfers should be fast
+        sender_paths = []
+        local_paths = []
+        for i in range(100):
+            filename = Path("current/raw/filewriting_local_{}.txt".format(i))
+            sender_path = ramdisk_path / filename
+            sender_path.write_text("hello world" + str(i))
+            local_path = local_target / filename
+            sender_paths.append(sender_path)
+            local_paths.append(local_path)
+
+        assert wait_for(lambda: not sender_paths[0].is_file(), timeout=20)
+        for i, (sender_path, local_path) in enumerate(
+                zip(sender_paths, local_paths)):
+            timeout = 2
+            assert wait_for(lambda: not sender_path.is_file(), timeout=timeout)
+            assert wait_for(local_path.is_file, timeout=1)
+            assert wait_for(
+                lambda: local_path.read_text() == "hello world" + str(i),
+                timeout=1)
+    finally:
+        stop_local_sender()
+
+
+def test_local_sender_file_writing_nested_subdir():
+    stop_local_sender()
+    ramdisk_path = clean_ramdisk("sender-debian12")
+    local_target = hidra_testdir / "sender-debian12" / "local_target"
+    start_local_sender()
+    try:
+        filename = Path("current/raw/nested/subdir/nested_file_local.txt")
+        sender_path = ramdisk_path / filename
+        sender_path.parent.mkdir(parents=True, exist_ok=True)
+        sender_path.write_text("hello world")
+        local_path = local_target / filename
+
+        # first file can take longer
+        assert wait_for(lambda: not sender_path.is_file(), timeout=60)
+        assert wait_for(local_path.is_file)
+        assert wait_for(lambda: local_path.read_text() == "hello world")
+    finally:
+        stop_local_sender()
 
 
 def test_sender_file_writing(sender_instance):

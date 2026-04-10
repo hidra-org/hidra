@@ -9,6 +9,7 @@ COPY systemctl.py /bin/systemctl
 RUN chmod +x /bin/systemctl
 
 COPY datamanager_p00.yaml /conf/datamanager_p00.yaml
+COPY datamanager_local.yaml /conf/datamanager_local.yaml
 
 ARG user_uid
 
