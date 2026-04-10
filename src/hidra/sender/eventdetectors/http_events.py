@@ -88,9 +88,9 @@ class FileFilterDeque:
         for file_obj in files_stored:
             if (file_obj.startswith(self.fix_subdirs)
                     and file_obj not in self.files_seen):
-                self.files_seen.append(file_obj)
                 new_files.append(file_obj)
 
+        self.files_seen.extend(new_files)
         return new_files
 
 

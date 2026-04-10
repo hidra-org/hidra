@@ -161,8 +161,6 @@ def test_filter_seen_history_size(file_filter):
     filename = "current/raw/filename11.ext"
     files.append(filename)
     ret = file_filter.get_new_files(files)
-    # ret now contains all files, which is a bug
-    pytest.skip()
     assert ret == ["current/raw/filename0.ext", filename]
 
 
