@@ -1227,6 +1227,11 @@ class ControlServer(utils.Base):
             # allow the beamline to stop it's old instances
             if det_id in self._get_instances():
                 return self._stop_old_instance(det_id)
+        elif action == b"do" and param == "status":
+            # allow the beamline to see status of old detectors
+            if det_id in self._get_instances():
+                controller = self._get_hidra_controller(det_id)
+                return controller.do(host_id, param)
 
         # check if detector belongs to the beamline
         try:
