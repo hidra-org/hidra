@@ -207,7 +207,7 @@ class EventDetectorImpl:
     def get_new_event(self):
         """Implementation of the abstract method get_new_event.
         """
-        files_stored = []
+        files_stored = None
         try:
             files_stored = self._get_files_stored()
         except requests.ConnectionError as err:
@@ -220,8 +220,10 @@ class EventDetectorImpl:
             self.log.error("Error in getting file list from %s",
                            self.file_writer_url, exc_info=True)
 
-        if not files_stored:
-            # Wait till next try to prevent denial of service
+        # Note: Do not return early in case of an empty list. The file filter needs to
+        # see empty lists to decide when a file was downloaded
+        if files_stored is None:
+            # There was an error. Wait till next try to prevent denial of service
             time.sleep(self.sleep_time)
             return []
 
