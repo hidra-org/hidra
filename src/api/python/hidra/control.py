@@ -354,7 +354,7 @@ class Control(Base):
         if command == "get_instances":
             return self._get_instances()
 
-        if self.stop_only and command not in ["stop", "get_instances"]:
+        if self.stop_only and command not in ["stop", "status", "get_instances"]:
             raise NotAllowed(
                 "Action not allowed (detector is not in netgroup)"
             )

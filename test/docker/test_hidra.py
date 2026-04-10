@@ -623,10 +623,22 @@ def test_control_client_detector_not_in_netgroup():
     )
 
 
+def test_control_client_get_status_not_in_netgroup(
+        eiger_instance_not_in_netgroup):
+    ret = control_client("status", beamline="p00", det="eiger2")
+    assert "Host eiger2 is not contained in netgroup of beamline p00" in ret.stdout
+
+
+def test_control_client_start_old_instances(
+        eiger_instance_not_in_netgroup):
+    ret = control_client("start", beamline="p00", det="eiger")
+    assert "Action not allowed (detector is not in netgroup)" in ret.stdout
+
+
 def test_control_client_get_status_old_instances(
         eiger_instance_not_in_netgroup):
     ret = control_client("status", beamline="p00", det="eiger")
-    assert "Not allowed to do this action." in ret.stdout
+    assert "Status of HiDRA (detector mode): RUNNING" in ret.stdout
 
 
 def test_control_client_get_old_instances(
