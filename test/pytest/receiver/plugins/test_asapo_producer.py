@@ -13,7 +13,8 @@ from plugins.asapo_producer import Plugin, AsapoWorker  # noqa
 def config():
     config = dict(
         endpoint="asapo-services:8400",
-        beamtime="p00",
+        beamtime="auto",
+        beamline="p00",
         token="abcdefg1234=",
         default_data_source='test001',
         n_threads=1,
@@ -83,13 +84,41 @@ def test_worker_create_producer_commissioning(worker, mock_create_producer, conf
     mock_create_producer.assert_called_once_with(
         config["endpoint"],
         'raw',
-        config["beamtime"],
-        config.get("beamline", "auto"),
+        "commissioning",
+        "p00",
         config["default_data_source"],
         config["token"],
         config["n_threads"],
         config.get("timeout", 5) * 1000,
     )
+
+
+def test_worker_create_producer_fixed_beamtime(config, mock_create_producer):
+    config["beamtime"] = "abc012"
+    del config["beamline"]
+    del config["user_config_path"]
+
+    worker = AsapoWorker(**config)
+
+    filepath = "/tmp/hidra_source/current/raw/det01/stream100_scan0-107.tif"
+    metadata = {
+        "relative_path": "current/raw/det01",
+        "filename": "stream100_scan0-107.tif"
+    }
+    worker.send_message(filepath, metadata)
+
+    mock_create_producer.assert_called_once_with(
+        config["endpoint"],
+        'raw',
+        config["beamtime"],
+        "auto",
+        config["default_data_source"],
+        config["token"],
+        config["n_threads"],
+        config.get("timeout", 5) * 1000,
+    )
+
+    assert (config["beamtime"], config["default_data_source"]) in worker.data_source_info
 
 
 def test_worker_send_message(worker, mock_producer):
@@ -235,6 +264,8 @@ def test_worker_data_source_removal(config, mock_create_producer):
     )
     worker = AsapoWorker(**config)
 
+    beamtime = config["beamtime"]
+
     # Create 11 data sources/producers
     for i in range(worker.max_active_data_sources + 1):
         filepath = "/tmp/hidra_source/current/raw/det{:02d}/stream100_scan0-107.tif".format(i)
@@ -246,8 +277,8 @@ def test_worker_data_source_removal(config, mock_create_producer):
         assert "det{:02d}".format(i) in mock_create_producer.call_args.args
 
     assert len(worker.data_source_info) == worker.max_active_data_sources
-    assert "det00" not in worker.data_source_info
-    assert next(iter(worker.data_source_info)) == "det01"
+    assert (beamtime, "det00") not in worker.data_source_info
+    assert next(iter(worker.data_source_info)) == (beamtime, "det01")
 
     # Send another message to move data source det01 to the end
     filepath = (
@@ -259,7 +290,7 @@ def test_worker_data_source_removal(config, mock_create_producer):
     }
     worker.send_message(filepath, metadata)
 
-    assert next(iter(worker.data_source_info)) == "det02"
+    assert next(iter(worker.data_source_info)) == (beamtime, "det02")
 
     # Create a new data source
     filepath = (
@@ -273,8 +304,8 @@ def test_worker_data_source_removal(config, mock_create_producer):
 
     assert "det99" in mock_create_producer.call_args.args
     assert len(worker.data_source_info) == worker.max_active_data_sources
-    assert "det00" not in worker.data_source_info
-    assert "det02" not in worker.data_source_info
-    assert "det01" in worker.data_source_info
-    assert "det99" in worker.data_source_info
-    assert next(iter(worker.data_source_info)) == "det03"
+    assert (beamtime, "det00") not in worker.data_source_info
+    assert (beamtime, "det02") not in worker.data_source_info
+    assert (beamtime, "det01") in worker.data_source_info
+    assert (beamtime, "det99") in worker.data_source_info
+    assert next(iter(worker.data_source_info)) == (beamtime, "det03")
