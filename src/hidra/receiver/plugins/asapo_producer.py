@@ -75,6 +75,21 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 
+def get_beamtime(metadata):
+    path_parts = Path(metadata["relative_path"]).parts
+    if path_parts[0] == "current":
+        beamtime = "auto"
+    elif path_parts[0] == "commissioning":
+        beamtime = "commissioning"
+    else:
+        raise utils.NotSupported(
+            "Path '{}' is not supported".format(
+                Path().joinpath(*path_parts).as_posix())
+        )
+
+    return beamtime
+
+
 def get_exposed_path(metadata):
     exposed_path = Path(metadata["relative_path"],
                         metadata["filename"]).parts
@@ -271,11 +286,13 @@ class AsapoWorker:
         # degraded performance as producers would be constantly deleted and recreated.
         self.max_active_data_sources = 10
 
-    def _create_producer(self, data_source):
-        logger.info("Create producer with data_source=%s", data_source)
-        self.data_source_info[data_source] = {
+    def _create_producer(self, beamtime, data_source):
+        logger.info(
+            "Create producer with beamtime=%s data_source=%s", beamtime, data_source
+        )
+        self.data_source_info[(beamtime, data_source)] = {
             "producer": asapo_producer.create_producer(
-                self.endpoint, "raw", self.beamtime, self.beamline,
+                self.endpoint, "raw", beamtime, self.beamline,
                 data_source, self.token, self.n_threads,
                 self.timeout * 1000),
         }
@@ -299,13 +316,13 @@ class AsapoWorker:
                     " for data_source=%s", oldest_data_source)
             oldest_producer.cleanup()
 
-    def _get_producer(self, data_source):
-        if data_source not in self.data_source_info:
-            self._create_producer(data_source=data_source)
+    def _get_producer(self, beamtime, data_source):
+        if (beamtime, data_source) not in self.data_source_info:
+            self._create_producer(beamtime=beamtime, data_source=data_source)
         else:
             # Move most recently used producers to the end
-            self.data_source_info.move_to_end(data_source)
-        return self.data_source_info[data_source]["producer"]
+            self.data_source_info.move_to_end((beamtime, data_source))
+        return self.data_source_info[(beamtime, data_source)]["producer"]
 
     def send_message(self, local_path, metadata):
         try:
@@ -320,7 +337,12 @@ class AsapoWorker:
             logger.debug("Ignoring file %s", local_path)
             return
 
-        producer = self._get_producer(data_source)
+        if self.beamtime == "auto":
+            beamtime = get_beamtime(metadata)
+        else:
+            beamtime = self.beamtime
+
+        producer = self._get_producer(beamtime, data_source)
         producer.send(
             # files start with index 0 and asapo with 1
             id=file_idx + 1 - self.start_file_idx,
