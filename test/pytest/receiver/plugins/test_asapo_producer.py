@@ -72,6 +72,26 @@ def test_worker_create_producer(worker, mock_create_producer, config):
     )
 
 
+def test_worker_create_producer_commissioning(worker, mock_create_producer, config):
+    filepath = "/tmp/hidra_source/current/raw/det01/stream100_scan0-107.tif"
+    metadata = {
+        "relative_path": "commissioning/raw/det01",
+        "filename": "stream100_scan0-107.tif"
+    }
+    worker.send_message(filepath, metadata)
+
+    mock_create_producer.assert_called_once_with(
+        config["endpoint"],
+        'raw',
+        config["beamtime"],
+        config.get("beamline", "auto"),
+        config["default_data_source"],
+        config["token"],
+        config["n_threads"],
+        config.get("timeout", 5) * 1000,
+    )
+
+
 def test_worker_send_message(worker, mock_producer):
     filepath = "/tmp/hidra_source/current/raw/det01/stream100_scan0-107.tif"
     metadata = {

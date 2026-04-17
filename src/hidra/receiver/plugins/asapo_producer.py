@@ -78,9 +78,11 @@ logger = logging.getLogger(__name__)
 def get_exposed_path(metadata):
     exposed_path = Path(metadata["relative_path"],
                         metadata["filename"]).parts
-    # asapo work on the core fs only at the moment thus the current
-    # directory does not exist there
-    if exposed_path[0] == "current":
+    # Asapo stores data only under "current" or "commissioning" depending on what kind
+    # of beamtime is currently open.
+    # Ensure that the file comes from one of these places and drop this folder from the
+    # exposed path because that is what Asapo expects
+    if exposed_path[0] in ["current", "commissioning"]:
         exposed_path = Path().joinpath(*exposed_path[1:]).as_posix()
     else:
         raise utils.NotSupported(
