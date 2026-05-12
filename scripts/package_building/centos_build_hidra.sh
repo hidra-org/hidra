@@ -73,20 +73,19 @@ IN_DOCKER_DIR=~/rpmbuild
 
 prepare_build
 
-if git show-ref --verify --quiet refs/heads/local_patches; then
-    # a branch named local_patches exists locally
-    # see https://stackoverflow.com/q/5167957
-    CURRENT_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
-    git checkout local_patches
-    git rebase "${CURRENT_BRANCH}"
+HIDRA_DESY_DIR=${HIDRA_DIR}/desy
+
+if git -C ${HIDRA_DESY_DIR} show-ref --verify --quiet refs/heads/main; then
+    # The DESY submodule exists
+    # TODO: Check that repo is clean
+    ADD_CONSTANTS="--prefix=hidra-${HIDRA_VERSION}/src/api/python/hidra/ --add-file ${HIDRA_DESY_DIR}/src/api/python/hidra/constants.py"
+else
+    ADD_CONSTANTS=""
 fi
 
-git archive --format tar --prefix="hidra-${HIDRA_VERSION}/" -o "${BUILD_DIR}/SOURCES/hidra-${HIDRA_VERSION}.tar.gz" HEAD
+
+git archive --format tar ${ADD_CONSTANTS} --prefix="hidra-${HIDRA_VERSION}/" -o "${BUILD_DIR}/SOURCES/hidra-${HIDRA_VERSION}.tar.gz" HEAD
 cp package/hidra.spec "${BUILD_DIR}/SPECS"
-
-if git show-ref --verify --quiet refs/heads/local_patches; then
-    git checkout "${CURRENT_BRANCH}"
-fi
 
 sed -i "s/${NEXT_HIDRA_VERSION}/${HIDRA_VERSION}/" "${BUILD_DIR}/SPECS/hidra.spec"
 

@@ -27,10 +27,15 @@ from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
 
-
-CONNECTION_LIST = {
-    "p00": {
-        "host": "asap3-p00",
-        "port": 51000
-    },
+try:
+    from .constants import CONNECTION_LIST
+except ImportError:
+    # Using ImportError instead of ModuleNotFoundError to support Python 2. This would
+    # hide a typo in the imported variable name, but other errors in the imported
+    # module, e.g. SyntaxError, would still be surfaced.
+    CONNECTION_LIST = {
+        "p00": {
+            "host": "asap3-p00",
+            "port": 51000
+        },
 }

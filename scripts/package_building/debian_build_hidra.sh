@@ -118,16 +118,15 @@ download_hidra()
         # local directory can contain unnecessary data or files
         git clone "$HIDRA_LOCATION" "$MAPPED_DIR"/hidra
 
-        pushd "$MAPPED_DIR"/hidra
-        if git show-ref --verify --quiet refs/remotes/origin/local_patches; then
-            # a branch named local_patches exists locally
-            # see https://stackoverflow.com/q/5167957
-            CURRENT_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
-            git checkout local_patches
-            git config user.email "tim.schoof@desy.de" && git config user.name "Tim Schoof"
-            git rebase "${CURRENT_BRANCH}"
+        HIDRA_DESY_DIR="${HIDRA_LOCATION}"/desy
+
+        if git -C "${HIDRA_DESY_DIR}" show-ref --verify --quiet refs/heads/main; then
+            # The DESY submodule exists
+            # TODO: Check that repo is clean
+            cp "${HIDRA_DESY_DIR}/src/api/python/hidra/constants.py" \
+               "${MAPPED_DIR}/hidra/src/api/python/hidra/constants.py"
         fi
-        popd
+
         return
     fi
 
