@@ -1,0 +1,3 @@
+[submodule "desy"]
+	path = desy
+	url = git@gitlab.desy.de:fs-sc/hidra-desy.git

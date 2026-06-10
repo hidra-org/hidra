@@ -18,26 +18,18 @@ py_ver=$($PYBIN -c 'import platform; print(platform.python_version())')
 py_ver=${py_ver%.*}
 [[ $py_ver =~ 3\.(7|8|9|10|11|12) ]] || exit 1
 
-if git show-ref --verify --quiet refs/heads/local_patches; then
-    # a branch named local_patches exists locally
-    # see https://stackoverflow.com/q/5167957
-    CURRENT_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
-    git checkout local_patches
-    git rebase "${CURRENT_BRANCH}"
+if git -C desy show-ref --verify --quiet refs/heads/main; then
+    # The DESY submodule exists
+    # TODO: Check that repo is clean
+    cp "desy/src/api/python/hidra/constants.py" \
+       "src/api/python/hidra/constants.py"
 fi
-
 # freeze
 
 $PYBIN -m pip install cx_freeze
 $PYBIN -m pip install --prefer-binary -r win-requirements.txt
 
 $PYBIN freeze_setup.py build
-
-
-if git show-ref --verify --quiet refs/heads/local_patches; then
-    git checkout "${CURRENT_BRANCH}"
-fi
-
 
 # package
 HIDRA_DIR="$(pwd)"

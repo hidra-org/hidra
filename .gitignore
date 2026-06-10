@@ -1,3 +1,6 @@
+# Ignore files copied from desy submodule
+src/api/python/hidra/constants.py
+
 *.swp
 *.o
 *.x
