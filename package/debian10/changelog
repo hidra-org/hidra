@@ -1,3 +1,8 @@
+hidra (4.4.4-1+deb10~fsec) buster; urgency=low
+
+  * Bump version
+
+ -- T. Schoof <tim.schoof@desy.de>  Tue, 23 Jun 2026 20:23:56 +0200
 hidra (4.4.3-1+deb10~fsec) buster; urgency=low
 
   * Bump version

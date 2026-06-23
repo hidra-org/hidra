@@ -1,5 +1,7 @@
 # develop
 
+# 4.4.4
+
 - The `monitored_dir` option accepts now a list of directories to be monitored
   simultaneously
 - Unsupported values of `remove_data` now raise an error at startup
