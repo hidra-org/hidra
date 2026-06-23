@@ -1,6 +1,19 @@
 # develop
 
+# 4.4.4
+
+- The `monitored_dir` option accepts now a list of directories to be monitored
+  simultaneously
+- Unsupported values of `remove_data` now raise an error at startup
+- In the Eiger control client config file, `history_size: -1` is now the default
+  value
+- The Eiger control client can now show the status of old detector instances
+  that have been moved to other beamlines
+- Reduced log level for common, usually harmless errors
+- Hidra should now throw less errors and get stuck less often during shutdown
+- Various build fixes and improvements
 - Limit number of open asapo producer connections used by receiver plugin
+- The `TCP_KEEPALIVE` option is now enabled for all TCP ZMQ sockets
 
 # 4.4.3
 
